@@ -8,7 +8,7 @@ variable "username" {
 }
 variable "password" {
     description = "oVirt Admin password"
-    default     = "asdf"
+    default     = "R@R@1134"
 }
 
 variable "tls_ca_files" {
@@ -33,7 +33,7 @@ variable "tls_system" {
 
 variable "tls_insecure" {
     description = "tls_insecure"
-    default     = "false"
+    default     = "true"
 }
 
 variable "mock" {
