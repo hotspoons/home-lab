@@ -10,7 +10,6 @@ terraform {
   }
 }
 
-/*
 module "temp01" {
   source            = "../modules/vms"
   cluster_id        = "c0769f3c-9c03-11ec-bc0d-00163e448789"
@@ -27,8 +26,8 @@ module "temp01" {
   vm_nic_gateway    = "192.168.1.254"
   vm_nic_netmask    = "255.255.255.0"
 }
-*/
 
+/*
 data "ovirt_blank_template" "blank" {
 }
 resource "ovirt_vm" "test" {
@@ -37,3 +36,4 @@ resource "ovirt_vm" "test" {
   cluster_id        = "c0769f3c-9c03-11ec-bc0d-00163e448789"
   template_id = data.ovirt_blank_template.blank.id
 }
+*/

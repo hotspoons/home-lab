@@ -1,14 +1,13 @@
 resource "ovirt_vm" "vm" {
   name                 = "${var.vm_name}"
   clone                = "false"
-  high_availability    = "true"
   cluster_id           = "${var.cluster_id}"
   memory               = "${var.vm_memory}"
   template_id          = "${var.vm_template_id}"
-  cores                = "${var.vm_cpu_cores}"
-  sockets              = "${var.vm_cpu_sockets}"
-  threads              = "${var.vm_cpu_threads}"
-
+  cpu_cores                = "${var.vm_cpu_cores}"
+  cpu_sockets              = "${var.vm_cpu_sockets}"
+  cpu_threads              = "${var.vm_cpu_threads}"
+/*
   initialization {
     authorized_ssh_key = "${var.vm_authorized_ssh_key}"
     host_name          = "${var.vm_hostname}"
@@ -27,4 +26,5 @@ resource "ovirt_vm" "vm" {
       on_boot            = "${var.vm_nic_on_boot}"
     }
   }
+*/
 }
