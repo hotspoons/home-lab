@@ -15,6 +15,10 @@ variable "vm_memory" {
   description = "The amount of memory of the VM (in metabytes)"
   default     = "4096"
 }
+variable "vm_max_memory" {
+  description = "The maximum amount of memory of the VM (in metabytes)"
+  default     = "4096"
+}
 variable "vm_cpu_cores" {
   description = "The amount of cores"
   default     = "2"

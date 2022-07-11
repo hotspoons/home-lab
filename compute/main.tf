@@ -10,15 +10,16 @@ terraform {
   }
 }
 
-module "temp01" {
+module "k8s-master" {
   source            = "../modules/vms"
   cluster_id        = "c0769f3c-9c03-11ec-bc0d-00163e448789"
-  vm_name           = "temp01"
-  vm_hostname       = "temp01.example.com"
+  vm_name           = "k8s-master"
+  vm_hostname       = "k8s-master.siomporas.com"
   vm_dns_servers    = "192.168.1.201"
   vm_dns_search     = "example.com"
-  vm_memory         = "2048"
-  vm_cpu_cores      = "2"
+  vm_memory         = "4294967296"
+  vm_max_memory     = "4294967296"
+  vm_cpu_cores      = "4"
   vm_timezone       = "America/New_York"
   vm_template_id    = "aceb058e-5689-49d3-a9d6-4caae908e34c"
   vm_nic_device     = "eth0"

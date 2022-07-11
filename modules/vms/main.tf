@@ -3,6 +3,7 @@ resource "ovirt_vm" "vm" {
   clone                = "false"
   cluster_id           = "${var.cluster_id}"
   memory               = "${var.vm_memory}"
+  maximum_memory       = "${var.vm_max_memory}"
   template_id          = "${var.vm_template_id}"
   cpu_cores                = "${var.vm_cpu_cores}"
   cpu_sockets              = "${var.vm_cpu_sockets}"
