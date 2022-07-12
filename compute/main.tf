@@ -18,7 +18,18 @@ locals{
   cpu_sockets    = var.cpu_sockets
   cpu_threads    = var.cpu_threads
   template_id    = var.template_id
-  master_install = split("\n", chomp(templatefile("k8s_master.tftpl", var)))
+  master_install = split("\n", chomp(templatefile("k8s_master.tftpl", {
+    nfs_server: var.nfs_server,
+    nfs_path: var.nfs_path,
+    nfs_provision_name: var.nfs_provision_name,
+    start_ip: var.start_ip,
+    end_ip: var.end_ip,
+    base_arch: var.base_arch,
+    aarch: var.aarch,
+    containerd_version: var.containerd_version,
+    helm_version: var.helm_version,
+    metallb_version: var.metallb_version
+  })))
 }
 
 # Define compute resources
@@ -29,7 +40,8 @@ resource "ovirt_vm" "k8s-master" {
   initialization_hostname = "k8s-master${local.domain_suffix}"
   initialization_custom_script = yamlencode({
     "ssh_authorized_keys": var.ssh_authorized_keys
-    "runcmd": var.initialization_commands
+    "runcmd": concat(
+      ["#!/bin/bash"], var.initialization_commands, local.master_install)
   })
   memory         = local.memory
   maximum_memory = local.maximum_memory
@@ -45,7 +57,8 @@ resource "ovirt_vm" "k8s-node1" {
   initialization_hostname = "k8s-node1${local.domain_suffix}"
   initialization_custom_script = yamlencode({
     "ssh_authorized_keys": var.ssh_authorized_keys
-    "runcmd": concat(["#!/bin/bash", var.initialization_commands, local.master_install)
+    "runcmd": concat(
+      ["#!/bin/bash"], var.initialization_commands, local.master_install)
   })
   memory         = local.memory
   maximum_memory = local.maximum_memory
