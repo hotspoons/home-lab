@@ -5,36 +5,51 @@ terraform {
   required_providers {
     ovirt = {
       source = "oVirt/ovirt"
-#      version = "2.0.1"
     }
   }
 }
 
-module "k8s-master" {
-  source            = "../modules/vms"
+resource "ovirt_vm" "k8s-master" {
+  cluster_id     = "c0769f3c-9c03-11ec-bc0d-00163e448789"
+  name           = "k8s-master.siomporas.com"
+  initialization_hostname = "k8s-master.siomporas.com"
+  memory         = "4294967296"
+  maximum_memory = "6442450944"
+  cpu_cores      = "4"
+  cpu_sockets    = "1"
+  cpu_threads    = "2"
+  template_id    = "aceb058e-5689-49d3-a9d6-4caae908e34c"
+}
+resource "ovirt_vm" "k8s-node1" {
   cluster_id        = "c0769f3c-9c03-11ec-bc0d-00163e448789"
-  vm_name           = "k8s-master"
-  vm_hostname       = "k8s-master.siomporas.com"
-  vm_dns_servers    = "192.168.1.201"
-  vm_dns_search     = "example.com"
-  vm_memory         = "4294967296"
-  vm_max_memory     = "4294967296"
-  vm_cpu_cores      = "4"
-  vm_timezone       = "America/New_York"
-  vm_template_id    = "aceb058e-5689-49d3-a9d6-4caae908e34c"
-  vm_nic_device     = "eth0"
-  vm_nic_ip_address = "192.168.1.220"
-  vm_nic_gateway    = "192.168.1.254"
-  vm_nic_netmask    = "255.255.255.0"
+  name       = "k8s-node1.siomporas.com"
+  initialization_hostname = "k8s-node1.siomporas.com"
+  memory         = "4294967296"
+  maximum_memory     = "6442450944"
+  cpu_cores      = "4"
+  cpu_sockets    = "1"
+  cpu_threads    = "2"
+  template_id    = "aceb058e-5689-49d3-a9d6-4caae908e34c"
+}
+resource "ovirt_vm" "k8s-node2" {
+  cluster_id        = "c0769f3c-9c03-11ec-bc0d-00163e448789"
+  name            = "k8s-node2.siomporas.com"
+  initialization_hostname = "k8s-node2.siomporas.com"
+  memory         = "4294967296"
+  maximum_memory     = "6442450944"
+  cpu_cores      = "4"
+  cpu_sockets    = "1"
+  cpu_threads    = "2"
+  template_id    = "aceb058e-5689-49d3-a9d6-4caae908e34c"
 }
 
-/*
-data "ovirt_blank_template" "blank" {
+resource "ovirt_vm_start" "k8s-master" {
+  vm_id = ovirt_vm.k8s-master.id
 }
-resource "ovirt_vm" "test" {
-  name        = "THISISRANDOM"
-  comment     = "Hello world!"
-  cluster_id        = "c0769f3c-9c03-11ec-bc0d-00163e448789"
-  template_id = data.ovirt_blank_template.blank.id
+resource "ovirt_vm_start" "k8s-node1" {
+  vm_id = ovirt_vm.k8s-node1.id
 }
-*/
+resource "ovirt_vm_start" "k8s-node2" {
+  vm_id = ovirt_vm.k8s-node2.id
+}
+
