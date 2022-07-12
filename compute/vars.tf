@@ -89,6 +89,11 @@ variable "cpu_threads" {
     default = "1"
 }
 
+variable "vnic_profile_id" {
+    description = "Profile ID for VNIC"
+    default = "0000000a-000a-000a-000a-000000000398"
+}
+
 variable "initialization_commands" {
     description = "A list of commands to be executed on first start, such as resetting a password - all commands must be XML encoded!"
     type = list(string)
@@ -104,3 +109,46 @@ variable "template_id" {
     description = "The template ID from your oVirt install you wish to use as the baseline for your compute"
 }
 
+#Kubernetes setup
+
+variable "nfs_server" {
+    description = "The hostname server to host persistent volumes"
+}
+
+variable "nfs_path" {
+    description = "The path on the NFS server where volumes will reside"
+}
+
+variable "nfs_provision_name" {
+    description = "The provisioned name for NFS PV provider"
+}
+
+variable "start_ip" {
+    description = "The beginning of the IP range reserved for the load balancer, should not overlap with DHCP range or used IP addresses"
+}
+
+variable "end_ip" {
+    description = "The end of the IP range reserved for the load balancer, should not overlap with DHCP range or used IP addresses"
+}
+
+variable "base_arch" {
+    description = "The target architecture for this Kubernetes cluster in kernel format, e.g. x86_64"
+    default = "x86_64"
+}
+
+variable "aarch" {
+    description = "The target architecture for this Kubernetes cluster in alternate format, e.g. amd64"
+    default = "amd64"
+}
+
+variable containerd_version {
+    description = "The current version of containerd you wish to target, e.g. 1.6.6-3.1.el8"
+}
+
+variable helm_version {
+    description = "The version of helm you wish to target, e.g. 3.9.0"
+}
+
+variable metallb_version {
+    description = "The version of MetalLB you wish to target, e.g. 0.13.3"
+}
