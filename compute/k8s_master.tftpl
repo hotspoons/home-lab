@@ -43,7 +43,7 @@ setenforce 0
 sed -i --follow-symlinks &#39;s/SELINUX=enforcing/SELINUX=disabled/g&#39; /etc/sysconfig/selinux
 modprobe br_netfilter
 
-yum install -y wget git lsof firewalld bash-completion
+dnf install -y wget git lsof firewalld bash-completion tc
 sed -i &#39;s/FirewallBackend=nftables/FirewallBackend=iptables/g&#39; /etc/firewalld/firewalld.conf
 systemctl restart firewalld
 
@@ -65,6 +65,7 @@ swapoff -a
 dnf config-manager --add-repo=$DOCKER_REPO
 dnf install -y $CONTAINER_IO_PKG
 dnf install docker-ce --nobest -y
+sed -i 's/disabled_plugins = \["cri"\]//g' /etc/containerd/config.toml
 systemctl start docker
 systemctl enable docker
 
