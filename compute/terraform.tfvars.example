@@ -14,7 +14,8 @@ cpu_sockets             = "1"
 cpu_threads             = "2"
 vnic_profile_id         = "0000000a-000a-000a-000a-000000000398"                # GET https://vm-manager.siomporas.com/ovirt-engine/api/vnicprofiles
 template_id             = "aceb058e-5689-49d3-a9d6-4caae908e34c"                # GET https://vm-manager.siomporas.com/ovirt-engine/api/templates /templates/template.id
-
+master_name             = "k8s-master"
+worker_name             = "k8s-worker"
 # Kubernetes settings
 nfs_server              = "vm-host.siomporas.com"
 nfs_path                = "/working/kubernetes-data"
@@ -26,6 +27,8 @@ aarch                   = "amd64"
 containerd_version      = "1.6.6-3.1.el8"
 helm_version            = "3.9.0"
 metallb_version         = "0.13.3"
+compute_nodes           = 2
+pod_network_cidr        = "192.168.0.0/16"
 
 ssh_authorized_keys     = [
     "ssh-rsa *base64EncodedKey* rich@rich-xp-new"

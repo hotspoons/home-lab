@@ -109,6 +109,16 @@ variable "template_id" {
     description = "The template ID from your oVirt install you wish to use as the baseline for your compute"
 }
 
+variable "master_name" {
+    description = "The name for the Kubernetes master node"
+    default = "k8s-master"
+}
+
+variable "worker_name" {
+    description = "The name for Kubernetes compute nodes, suffixed with an index"
+    default = "k8s-node"
+}
+
 #Kubernetes setup
 
 variable "nfs_server" {
@@ -151,4 +161,13 @@ variable helm_version {
 
 variable metallb_version {
     description = "The version of MetalLB you wish to target, e.g. 0.13.3"
+}
+
+variable compute_nodes {
+    description = "Number of compute nodes to create"
+    type = number
+}
+
+variable pod_network_cidr{
+    description = "The CIDR block for your network, e.g. 192.168.0.0/16"
 }
