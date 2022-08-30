@@ -7,6 +7,7 @@ NFS_PROVISION_NAME=${nfs_provision_name}
 ## IP Address range for load balancer
 START_IP=${start_ip}
 END_IP=${end_ip}
+MASTER_IP=${master_ip}
 METALLB_VERSION=${metallb_version}
 POD_NETWORK_CIDR=${pod_network_cidr}
 
@@ -22,8 +23,8 @@ METALLB_URL=https://raw.githubusercontent.com/metallb/metallb/v$METALLB_VERSION/
 ################################################
 
 firewall-cmd --zone=public --permanent --add-port={6443,2379,2380,10250,10251,10252}/tcp
-firewall-cmd --zone=public --permanent --add-rich-rule 'rule family=ipv4 source address=worker-IP-address/32 accept'
-firewall-cmd --zone=public --permanent --add-rich-rule 'rule family=ipv4 source address=172.17.0.0/16 accept'
+firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=$MASTER_IP/32 accept"
+firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=172.17.0.0/16 accept"
 firewall-cmd --reload
 
 ################################################

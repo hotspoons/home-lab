@@ -7,7 +7,12 @@ terraform {
       source = "oVirt/ovirt"
       version = "2.1.5"
     }
+    remote = {
+      source = "tenstad/remote"
+      version = "0.1.0"
   }
+  }
+  
 }
 
 locals{
@@ -33,18 +38,7 @@ locals{
     aarch: var.aarch,
     containerd_version: var.containerd_version,
   })))
-  master_install = split("\n", chomp(templatefile("templates/k8s_master.tftpl", {
-    nfs_server: var.nfs_server,
-    nfs_path: var.nfs_path,
-    nfs_provision_name: var.nfs_provision_name,
-    start_ip: var.start_ip,
-    end_ip: var.end_ip,
-    metallb_version: var.metallb_version,
-    pod_network_cidr: var.pod_network_cidr,
-  })))
-  worker_install = split("\n", chomp(templatefile("templates/k8s_worker.tftpl", {
-    kube_join_command: "" # TODO how to execute shell command via SSH and grab output?
-  })))
+ 
 }
 
 # Define compute templates with updated packages and software installations
@@ -239,13 +233,32 @@ data "ovirt_wait_for_ip" "k8s_worker" {
 
 ################################## final master and nodes setup
 
+data "null_data_source" "post_install_data"{
+  inputs = {
+    master_install = chomp(templatefile("templates/k8s_master.tftpl", {
+      nfs_server: var.nfs_server,
+      nfs_path: var.nfs_path,
+      nfs_provision_name: var.nfs_provision_name,
+      start_ip: var.start_ip,
+      end_ip: var.end_ip,
+      metallb_version: var.metallb_version,
+      pod_network_cidr: var.pod_network_cidr,
+      master_ip: tolist(tolist(data.ovirt_wait_for_ip.k8s_master.interfaces)[0].ipv4_addresses)[0]
+    }))
+    worker_install = chomp(templatefile("templates/k8s_worker.tftpl", {
+      kube_join_command: "" # TODO how to execute shell command via SSH and grab output?
+    }))
+  }
+   
+}
+
 resource "local_sensitive_file" "k8s_master_setup" {
-    content  = join("\n", concat(var.initialization_commands, local.master_install))
+    content  = data.null_data_source.post_install_data.outputs.master_install
     filename = "k8s_master_setup.sh"
 }
 
 resource "local_sensitive_file" "k8s_worker_setup" {
-    content  = join("\n", concat(var.initialization_commands, local.worker_install))
+    content  = data.null_data_source.post_install_data.outputs.worker_install
     filename = "k8s_worker_setup.sh"
 }
 
@@ -254,7 +267,7 @@ resource "null_resource" "k8s_master"{
     type = "ssh"
     user = "root"
     private_key = var.ssh_private_key
-    host = tolist(tolist(data.ovirt_wait_for_ip.k8s_master.interfaces)[0].ipv4_addresses)[0]
+    host = data.null_data_source.post_install_data.outputs.master_ip
   }
 
   provisioner "file" {
@@ -272,7 +285,8 @@ resource "null_resource" "k8s_master"{
 
 data "remote_file" "join_kubernetes_cluster" {
   conn {
-    host        = tolist(tolist(data.ovirt_wait_for_ip.k8s_master.interfaces)[0].ipv4_addresses)[0]
+    user        = "root"
+    host        = data.null_data_source.post_install_data.outputs.master_ip
     port        = 22
     private_key = var.ssh_private_key
   }
@@ -298,6 +312,7 @@ resource "null_resource" "k8s_worker"{
     inline = [
       "chmod +x /tmp/k8s_worker_setup.sh",
       "/tmp/k8s_worker_setup.sh",
+      "${data.remote_file.join_kubernetes_cluster.content}"
     ]
   }
 }
