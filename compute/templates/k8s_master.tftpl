@@ -22,8 +22,8 @@ METALLB_URL=https://raw.githubusercontent.com/metallb/metallb/v$METALLB_VERSION/
 ################################################
 
 firewall-cmd --zone=public --permanent --add-port={6443,2379,2380,10250,10251,10252}/tcp
-firewall-cmd --zone=public --permanent --add-rich-rule &#39;rule family=ipv4 source address=worker-IP-address/32 accept&#39;
-firewall-cmd --zone=public --permanent --add-rich-rule &#39;rule family=ipv4 source address=172.17.0.0/16 accept&#39;
+firewall-cmd --zone=public --permanent --add-rich-rule 'rule family=ipv4 source address=worker-IP-address/32 accept'
+firewall-cmd --zone=public --permanent --add-rich-rule 'rule family=ipv4 source address=172.17.0.0/16 accept'
 firewall-cmd --reload
 
 ################################################
@@ -45,7 +45,7 @@ kubectl get nodes
 
 kubectl apply -f $DASHBOARD_URL
 
-cat &lt;&lt;EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -53,7 +53,7 @@ metadata:
   namespace: kubernetes-dashboard
 EOF
 
-cat &lt;&lt;EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -72,9 +72,9 @@ EOF
 ## How to access and connect to dashboard     ##
 ################################################
 #    Start proxy:
-#        kubectl proxy&amp;
+#        kubectl proxy&
 #    Get UI token:
-#        kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk &#39;{print $1}&#39;)
+#        kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
 
 #    Port forward SSH session so you can access dashboard on a remote server:
 #        ssh -L 9999:127.0.0.1:8001 -N -f -l root kubernetes-master.siomporas.com
@@ -86,19 +86,19 @@ EOF
 ## Configure auto-provisioned NFS storage     ##
 ################################################
 
-cat &lt;&lt;EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: managed-nfs-storage
   annotations:
-    storageclass.kubernetes.io/is-default-class: &#39;true&#39;
+    storageclass.kubernetes.io/is-default-class: 'true'
 provisioner: $NFS_PROVISION_NAME
 parameters:
-  archiveOnDelete: &#39;false&#39;
+  archiveOnDelete: 'false'
 EOF
 
-cat &lt;&lt;EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -f -
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -140,14 +140,14 @@ EOF
 ## Configure Metal Load Balancer              ##
 ################################################
 
-kubectl get configmap -n kube-system kube-proxy -o yaml &gt; /tmp/proxy.yaml
-sed -i &#39;s/strictARP: false/strictARP: true/g&#39; /tmp/proxy.yaml
+kubectl get configmap -n kube-system kube-proxy -o yaml > /tmp/proxy.yaml
+sed -i 's/strictARP: false/strictARP: true/g' /tmp/proxy.yaml
 kubectl replace -f /tmp/proxy.yaml
 kubectl apply -f $METALLB_NAMESPACE_URL
 kubectl apply -f $METALLB_URL
-kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey=&#39;$(openssl rand -base64 128)&#39;
+kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey='$(openssl rand -base64 128)'
 
-cat &lt;&lt;EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -167,5 +167,6 @@ EOF
 ## Reset everything, clear docker cache       ##
 ################################################
 
+kubeadm token create --print-join-command > /tmp/join_kubernetes_cluster.sh
 
-# kubeadm reset -f &amp;&amp; rm -rf /etc/cni/net.d &amp;&amp; rm -f $HOME/.kube/config &amp;&amp; docker system prune -a -f
+# kubeadm reset -f && rm -rf /etc/cni/net.d && rm -f $HOME/.kube/config && docker system prune -a -f

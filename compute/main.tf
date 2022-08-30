@@ -22,7 +22,6 @@ locals{
   compute_nodes  = var.compute_nodes
   master_name    = var.master_name
   worker_name    = var.worker_name
-  ssh_key        = var.ssh_authorized_keys[0]
   master_template_install = split("\n", chomp(templatefile("templates/k8s_master_template.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
@@ -34,7 +33,7 @@ locals{
     aarch: var.aarch,
     containerd_version: var.containerd_version,
   })))
-master_install = split("\n", chomp(templatefile("templates/k8s_master.tftpl", {
+  master_install = split("\n", chomp(templatefile("templates/k8s_master.tftpl", {
     nfs_server: var.nfs_server,
     nfs_path: var.nfs_path,
     nfs_provision_name: var.nfs_provision_name,
@@ -55,8 +54,9 @@ resource "ovirt_vm" "k8s_master_prototype" {
   name           = "${local.master_name}-prototype${local.domain_suffix}"
   initialization_hostname = "${local.master_name}-prototype${local.domain_suffix}"
   initialization_custom_script = yamlencode({
+    "ssh_authorized_keys": var.ssh_authorized_keys,
     "runcmd": concat(
-      ["#!/bin/bash"], var.initialization_commands, local.master_install)
+      ["#!/bin/bash"])
   })
   memory         = local.memory
   maximum_memory = local.maximum_memory
@@ -72,8 +72,9 @@ resource "ovirt_vm" "k8s_worker_prototype" {
   name       =   "${local.worker_name}-prototype${local.domain_suffix}"
   initialization_hostname = "${local.worker_name}-prototype${local.domain_suffix}"
   initialization_custom_script = yamlencode({
+    "ssh_authorized_keys": var.ssh_authorized_keys,
     "runcmd": concat(
-      ["#!/bin/bash"], var.initialization_commands, local.worker_install)
+      ["#!/bin/bash"])
   })
   memory         = local.memory
   maximum_memory = local.maximum_memory
@@ -84,75 +85,92 @@ resource "ovirt_vm" "k8s_worker_prototype" {
 }
 
 
-resource "ovirt_wait_for_ip" "k8s_master_prototype" {
-  vm_id = ovirt_vm.k8s_master_prototype.id
-  connection {
-    type = "ssh"
-    user = "root"
-    private_key = local.ssh_key
-    host = self.ipv4_addresses[0]
-  }
-  provisioner "remote-exec" {
-    inline = concat(var.initialization_commands, local.master_template_install)
-  }
-}
-
-resource "ovirt_wait_for_ip" "k8s_worker_prototype" {
-  vm_id = ovirt_vm.k8s_worker_prototype.id
-  connection {
-    type = "ssh"
-    user = "root"
-    private_key = local.ssh_key
-    host = self.ipv4_addresses[0]
-  }
-  provisioner "remote-exec" {
-    inline = concat(var.initialization_commands, local.worker_template_install)
-  }
-}
-
-# Bind start/stop events to compute lifecycle
-/*
-resource "ovirt_nic" "k8s_master_prototype" {
-  vnic_profile_id = var.vnic_profile_id
-  vm_id           = ovirt_vm.k8s_master_prototype.id
-  name            = "eth0"
-}
-
-resource "ovirt_nic" "k8s_worker_prototype" {
-  vnic_profile_id = var.vnic_profile_id
-  vm_id           = ovirt_vm.k8s_worker_prototype[count.index].id
-  name            = "eth0"
-}
-
 resource "ovirt_vm_start" "k8s_master_prototype" {
   vm_id = ovirt_vm.k8s_master_prototype.id
   stop_behavior = "stop"
   force_stop = true
-  depends_on = [ovirt_nic.k8s_master]
 }
 
 resource "ovirt_vm_start" "k8s_worker_prototype" {
-  vm_id = ovirt_vm.k8s_worker_prototype[count.index].id
+  vm_id = ovirt_vm.k8s_worker_prototype.id
   stop_behavior = "stop"
   force_stop = true
-  depends_on = [ovirt_nic.k8s_worker]
 }
-*/
-# Wait for IP address from nodes. TODO wait for this or jump in: https://github.com/oVirt/terraform-provider-ovirt/issues/446
 
+data "ovirt_wait_for_ip" "k8s_master_prototype" {
+  vm_id = ovirt_vm.k8s_master_prototype.id
+}
 
+data "ovirt_wait_for_ip" "k8s_worker_prototype" {
+  vm_id = ovirt_vm.k8s_worker_prototype.id
+}
+
+resource "local_sensitive_file" "k8s_master_prototype_setup" {
+    content  = join("\n", concat(var.initialization_commands, local.master_template_install))
+    filename = "k8s_master_prototype_setup.sh"
+}
+
+resource "local_sensitive_file" "k8s_worker_prototype_setup" {
+    content  = join("\n", concat(var.initialization_commands, local.worker_template_install))
+    filename = "k8s_worker_prototype_setup.sh"
+}
+
+resource "null_resource" "k8s_master_prototype"{
+  connection {
+    type = "ssh"
+    user = "root"
+    private_key = var.ssh_private_key
+    host = tolist(tolist(data.ovirt_wait_for_ip.k8s_master_prototype.interfaces)[0].ipv4_addresses)[0]
+  }
+
+  provisioner "file" {
+    source      = "k8s_master_prototype_setup.sh"
+    destination = "/tmp/k8s_master_prototype_setup.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/k8s_master_prototype_setup.sh",
+      "/tmp/k8s_master_prototype_setup.sh",
+    ]
+  }
+}
+
+resource "null_resource" "k8s_worker_prototype"{
+  connection {
+    type = "ssh"
+    user = "root"
+    private_key = var.ssh_private_key
+    host = tolist(tolist(data.ovirt_wait_for_ip.k8s_worker_prototype.interfaces)[0].ipv4_addresses)[0]
+  }
+
+  provisioner "file" {
+    source      = "k8s_worker_prototype_setup.sh"
+    destination = "/tmp/k8s_worker_prototype_setup.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/k8s_worker_prototype_setup.sh",
+      "/tmp/k8s_worker_prototype_setup.sh",
+    ]
+  }
+}
 
 # Create templates from compute templates, delete templates
 
 resource "ovirt_template" "k8s_master_template" {
   vm_id = ovirt_vm.k8s_master_prototype.id
   name  = "k8s_master_template"
+  depends_on = [null_resource.k8s_master_prototype]
   # TODO can these be sealed?
 }
 
 resource "ovirt_template" "k8s_worker_template" {
   vm_id = ovirt_vm.k8s_worker_prototype.id
   name  = "k8s_worker_template"
+  depends_on = [null_resource.k8s_worker_prototype]
+
   # TODO can these be sealed?
 }
 
@@ -166,7 +184,7 @@ resource "ovirt_vm" "k8s_master" {
   initialization_custom_script = yamlencode({
     "ssh_authorized_keys": var.ssh_authorized_keys
     "runcmd": concat(
-      ["#!/bin/bash"], var.initialization_commands, local.master_install)
+      ["#!/bin/bash"], var.initialization_commands)
   })
   memory         = local.memory
   maximum_memory = local.maximum_memory
@@ -184,7 +202,7 @@ resource "ovirt_vm" "k8s_worker" {
   initialization_custom_script = yamlencode({
     "ssh_authorized_keys": var.ssh_authorized_keys
     "runcmd": concat(
-      ["#!/bin/bash"], var.initialization_commands, local.master_install)
+      ["#!/bin/bash"], var.initialization_commands)
   })
   memory         = local.memory
   maximum_memory = local.maximum_memory
@@ -194,29 +212,12 @@ resource "ovirt_vm" "k8s_worker" {
   template_id    = ovirt_template.k8s_worker_template.id
 }
 
-
-# Add networking to compute
-
-resource "ovirt_nic" "k8s_master" {
-  vnic_profile_id = var.vnic_profile_id
-  vm_id           = ovirt_vm.k8s_master.id
-  name            = "eth0"
-}
-
-resource "ovirt_nic" "k8s_worker" {
-  vnic_profile_id = var.vnic_profile_id
-  count           = local.compute_nodes
-  vm_id           = ovirt_vm.k8s_worker[count.index].id
-  name            = "eth0"
-}
-
 # Bind start/stop events to compute lifecycle
 
 resource "ovirt_vm_start" "k8s_master" {
   vm_id = ovirt_vm.k8s_master.id
   stop_behavior = "stop"
   force_stop = true
-  depends_on = [ovirt_nic.k8s_master]
 }
 
 resource "ovirt_vm_start" "k8s_worker" {
@@ -224,10 +225,7 @@ resource "ovirt_vm_start" "k8s_worker" {
   vm_id = ovirt_vm.k8s_worker[count.index].id
   stop_behavior = "stop"
   force_stop = true
-  depends_on = [ovirt_nic.k8s_worker]
 }
-
-# Wait for IP address from nodes. TODO wait for this or jump in: https://github.com/oVirt/terraform-provider-ovirt/issues/446
 
 data "ovirt_wait_for_ip" "k8s_master" {
   vm_id = ovirt_vm.k8s_master.id
@@ -238,4 +236,68 @@ data "ovirt_wait_for_ip" "k8s_worker" {
   vm_id = ovirt_vm.k8s_worker[count.index].id
 }
 
-#
+
+################################## final master and nodes setup
+
+resource "local_sensitive_file" "k8s_master_setup" {
+    content  = join("\n", concat(var.initialization_commands, local.master_install))
+    filename = "k8s_master_setup.sh"
+}
+
+resource "local_sensitive_file" "k8s_worker_setup" {
+    content  = join("\n", concat(var.initialization_commands, local.worker_install))
+    filename = "k8s_worker_setup.sh"
+}
+
+resource "null_resource" "k8s_master"{
+  connection {
+    type = "ssh"
+    user = "root"
+    private_key = var.ssh_private_key
+    host = tolist(tolist(data.ovirt_wait_for_ip.k8s_master.interfaces)[0].ipv4_addresses)[0]
+  }
+
+  provisioner "file" {
+    source      = "k8s_master_setup.sh"
+    destination = "/tmp/k8s_master_setup.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/k8s_master_setup.sh",
+      "/tmp/k8s_master_setup.sh",
+    ]
+  }
+}
+
+data "remote_file" "join_kubernetes_cluster" {
+  conn {
+    host        = tolist(tolist(data.ovirt_wait_for_ip.k8s_master.interfaces)[0].ipv4_addresses)[0]
+    port        = 22
+    private_key = var.ssh_private_key
+  }
+  path        = "/tmp/join_kubernetes_cluster.sh"
+}
+
+/* Loop through compute worker nodes and join to cluster */
+resource "null_resource" "k8s_worker"{
+  count = local.compute_nodes
+  connection {
+    type = "ssh"
+    user = "root"
+    private_key = var.ssh_private_key
+    host = tolist(tolist(data.ovirt_wait_for_ip.k8s_worker[count.index].interfaces)[0].ipv4_addresses)[0]
+  }
+
+  provisioner "file" {
+    source      = "k8s_worker_setup.sh"
+    destination = "/tmp/k8s_worker_setup.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/k8s_worker_setup.sh",
+      "/tmp/k8s_worker_setup.sh",
+    ]
+  }
+}

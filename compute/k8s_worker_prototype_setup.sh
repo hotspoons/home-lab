@@ -1,18 +1,16 @@
+echo "password" | passwd --stdin root
 
-## NFS Configuration - set NFS server and path for dynamic storage for persistent volumes
-BASE_ARCH=${base_arch}
-AARCH=${aarch}
+
+BASE_ARCH=x86_64
+AARCH=amd64
 EL_VERSION=8
-CONTAINERD_VERSION=${containerd_version}
-HELM_VERSION=${helm_version}
+CONTAINERD_VERSION=1.6.6-3.1.el8
 
 #Setup configuration
 DOCKER_REPO=https://download.docker.com/linux/centos/docker-ce.repo
 CONTAINER_IO_PKG=https://download.docker.com/linux/centos/$EL_VERSION/$BASE_ARCH/stable/Packages/containerd.io-$CONTAINERD_VERSION.$BASE_ARCH.rpm
 KUBERNETES_REPO=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$BASE_ARCH
 KUBERNETES_GPG='https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg'
-HELM_URL=https://get.helm.sh
-HELM_FILE=helm-v$HELM_VERSION-linux-$AARCH.tar.gz
 ROCKY_MIGRATE_URL=https://raw.githubusercontent.com/rocky-linux/rocky-tools/main/migrate2rocky/migrate2rocky.sh
 
 mkdir /opt/tmp
@@ -74,18 +72,7 @@ systemctl start kubelet
 
 
 ################################################
-## Initialize helm                            ##
-################################################
-
-cd /tmp
-curl -o $HELM_FILE $HELM_URL/$HELM_FILE
-tar -zxvf $HELM_FILE
-mv linux-amd64/helm /usr/local/bin/helm
-
-################################################
 ## Clean up space                             ##
 ################################################
 
 yum clean all
-
-

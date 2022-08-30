@@ -1,10 +1,11 @@
+echo "password" | passwd --stdin root
 
 ## NFS Configuration - set NFS server and path for dynamic storage for persistent volumes
-BASE_ARCH=${base_arch}
-AARCH=${aarch}
+BASE_ARCH=x86_64
+AARCH=amd64
 EL_VERSION=8
-CONTAINERD_VERSION=${containerd_version}
-HELM_VERSION=${helm_version}
+CONTAINERD_VERSION=1.6.6-3.1.el8
+HELM_VERSION=3.9.0
 
 #Setup configuration
 DOCKER_REPO=https://download.docker.com/linux/centos/docker-ce.repo
@@ -87,5 +88,3 @@ mv linux-amd64/helm /usr/local/bin/helm
 ################################################
 
 yum clean all
-
-

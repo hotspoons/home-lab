@@ -34,6 +34,12 @@ ssh_authorized_keys     = [
     "ssh-rsa *base64EncodedKey* rich@rich-xp-new"
     ]
 
+ssh_private_key        = "-----BEGIN OPENSSH PRIVATE KEY-----
+...
+...
+...
+-----END OPENSSH PRIVATE KEY-----
+"
 
 initialization_commands = [
     "echo &#39;password&#39; | passwd --stdin root"

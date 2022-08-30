@@ -105,6 +105,10 @@ variable "ssh_authorized_keys" {
     type = list(string)
 }
 
+variable "ssh_private_key" {
+    description = "An SSH private key corresponding to one of the public keys, used to access the VM"
+}
+
 variable "template_id" {
     description = "The template ID from your oVirt install you wish to use as the baseline for your compute"
 }
