@@ -107,12 +107,12 @@ data "ovirt_wait_for_ip" "k8s_worker_prototype" {
 
 resource "local_sensitive_file" "k8s_master_prototype_setup" {
     content  = join("\n", concat(var.initialization_commands, local.master_template_install))
-    filename = "k8s_master_prototype_setup.sh"
+    filename = "./tmp/k8s_master_prototype_setup.sh"
 }
 
 resource "local_sensitive_file" "k8s_worker_prototype_setup" {
     content  = join("\n", concat(var.initialization_commands, local.worker_template_install))
-    filename = "k8s_worker_prototype_setup.sh"
+    filename = "./tmp/k8s_worker_prototype_setup.sh"
 }
 
 resource "null_resource" "k8s_master_prototype"{
@@ -124,7 +124,7 @@ resource "null_resource" "k8s_master_prototype"{
   }
 
   provisioner "file" {
-    source      = "k8s_master_prototype_setup.sh"
+    source      = "./tmp/k8s_master_prototype_setup.sh"
     destination = "/tmp/k8s_master_prototype_setup.sh"
   }
 
@@ -145,7 +145,7 @@ resource "null_resource" "k8s_worker_prototype"{
   }
 
   provisioner "file" {
-    source      = "k8s_worker_prototype_setup.sh"
+    source      = "./tmp/k8s_worker_prototype_setup.sh"
     destination = "/tmp/k8s_worker_prototype_setup.sh"
   }
 
