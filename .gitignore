@@ -36,3 +36,5 @@ terraform.rc
 
 mitmproxy
 mitmproxy/*
+
+.env

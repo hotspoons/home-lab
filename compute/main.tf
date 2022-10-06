@@ -83,20 +83,24 @@ resource "ovirt_vm_start" "k8s_master_prototype" {
   vm_id = ovirt_vm.k8s_master_prototype.id
   stop_behavior = "stop"
   force_stop = true
+  depends_on = [ovirt_vm.k8s_master_prototype]
 }
 
 resource "ovirt_vm_start" "k8s_worker_prototype" {
   vm_id = ovirt_vm.k8s_worker_prototype.id
   stop_behavior = "stop"
   force_stop = true
+  depends_on = [ovirt_vm.k8s_worker_prototype]
 }
 
 data "ovirt_wait_for_ip" "k8s_master_prototype" {
   vm_id = ovirt_vm.k8s_master_prototype.id
+  depends_on = [ovirt_vm_start.k8s_master_prototype]
 }
 
 data "ovirt_wait_for_ip" "k8s_worker_prototype" {
   vm_id = ovirt_vm.k8s_worker_prototype.id
+  depends_on = [ovirt_vm_start.k8s_worker_prototype]
 }
 
 resource "local_sensitive_file" "k8s_master_prototype_setup" {
@@ -126,8 +130,10 @@ resource "null_resource" "k8s_master_prototype"{
     inline = [
       "chmod +x /tmp/k8s_master_prototype_setup.sh",
       "/tmp/k8s_master_prototype_setup.sh",
+      "sleep 10"
     ]
   }
+  depends_on = [data.ovirt_wait_for_ip.k8s_master_prototype, local_sensitive_file.k8s_master_prototype_setup]
 }
 
 resource "null_resource" "k8s_worker_prototype"{
@@ -147,8 +153,10 @@ resource "null_resource" "k8s_worker_prototype"{
     inline = [
       "chmod +x /tmp/k8s_worker_prototype_setup.sh",
       "/tmp/k8s_worker_prototype_setup.sh",
+      "sleep 10"
     ]
   }
+  depends_on = [data.ovirt_wait_for_ip.k8s_worker_prototype, local_sensitive_file.k8s_worker_prototype_setup]
 }
 
 # Create templates from compute templates, delete templates
@@ -156,14 +164,14 @@ resource "null_resource" "k8s_worker_prototype"{
 resource "ovirt_template" "k8s_master_template" {
   vm_id = ovirt_vm.k8s_master_prototype.id
   name  = "k8s_master_template"
-  depends_on = [null_resource.k8s_master_prototype]
+  depends_on = [null_resource.k8s_master_prototype, ovirt_vm_start.k8s_master_prototype]
   # TODO can these be sealed?
 }
 
 resource "ovirt_template" "k8s_worker_template" {
   vm_id = ovirt_vm.k8s_worker_prototype.id
   name  = "k8s_worker_template"
-  depends_on = [null_resource.k8s_worker_prototype]
+  depends_on = [null_resource.k8s_worker_prototype, ovirt_vm_start.k8s_worker_prototype]
 
   # TODO can these be sealed?
 }
@@ -186,6 +194,7 @@ resource "ovirt_vm" "k8s_master" {
   cpu_sockets    = local.cpu_sockets
   cpu_threads    = local.cpu_threads
   template_id    = ovirt_template.k8s_master_template.id
+  depends_on     = [ovirt_template.k8s_master_template]
 }
 
 resource "ovirt_vm" "k8s_worker" {
@@ -204,6 +213,7 @@ resource "ovirt_vm" "k8s_worker" {
   cpu_sockets    = local.cpu_sockets
   cpu_threads    = local.cpu_threads
   template_id    = ovirt_template.k8s_worker_template.id
+  depends_on     = [ovirt_template.k8s_worker_template]
 }
 
 # Bind start/stop events to compute lifecycle
