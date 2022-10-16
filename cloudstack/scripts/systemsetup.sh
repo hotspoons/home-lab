@@ -1,16 +1,19 @@
 #!/bin/bash
 
-### STEP 1 - install Rocky 8, set a static IP
-### STEP 2 - copy the file ".env.example" to ".env"; set values specific to your environment - at a minimum NIC, IP, GW, DNS, VM_HOST_UN, VM_HOST_PW, NMASK, 
+### PREREQUISITES - an AMD or Intel x64-based system with virtualization acceleration enabled; and plenty of RAM and disk space; and Rocky 8 boot media
+
+### STEP 1 - install Rocky 8, set a static IP (nmcli or nmtui)
+### STEP 2 - curl -o home-lab.zip https://github.com/hotspoons/home-lab/archive/refs/heads/main.zip && unzip home-lab.zip && cd home-lab/cloudstack/scripts
+### STEP 3 - copy the file ".env.example" to ".env"; set values specific to your environment - at a minimum NIC, IP (from step 1), GW, DNS, VM_HOST_UN, VM_HOST_PW, NMASK, 
 #####               And the following if you don't want to use the default setup for data: PRI_NFS, PRI_MNT, SEC_NFS, SEC_MNT
 
-### STEP 3 - run this script
-### STEP 4 - any hardware or environment-specific customizations to the OS setup, such as importing NFS mounts, setting up a RAID, etc. should be done before:
-### STEP 5 - run cloudstack.sh 
-### STEP 6 - log into the web GUI on http://host-ip-or-name:8080/client/#/user/login?redirect=%2F (username: admin, password: password) -> 
+### STEP 4 - run this script
+### STEP 5 - any hardware or environment-specific customizations to the OS setup, such as importing NFS mounts, setting up a RAID, etc. should be done before:
+### STEP 6 - run cloudstack.sh 
+### STEP 7 - log into the web GUI on http://host-ip-or-name:8080/client/#/user/login?redirect=%2F (username: admin, password: password) -> 
 #####              Accounts -> View Users (middle pane) -> admin -> generate keys (button in upper right) -> okay -> 
 #####              copy api key and secret keys to .env file, API_KEY and SECRET_KEY values respectively
-### STEP 7 - run zonesetup.sh
+### STEP 8 - run zonesetup.sh
 
 if ! [ -s ".env" ]; then
   echo ".env file does not exist, cannot continue. Did you copy \".env.example\" to \".env\" and modify it per the instructions?"
@@ -19,6 +22,8 @@ fi
 
 ## Read in .env file
 export $(grep -v '^#' .env | xargs)
+
+dnf install -y yum-utils
 
 ## Setup Terraform and CloudStack repos
 yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
@@ -32,7 +37,7 @@ EOF
 
 ## Update system, then install new software
 dnf -y upgrade --refresh
-dnf install -y nfs-utils git wget terraform chrony bridge-utils mysql-server java-11-openjdk-devel cloudstack-management virt-install virt-viewer cloudstack-agent
+dnf install -y nfs-utils git wget terraform chrony mysql-server java-11-openjdk-devel cloudstack-management virt-install virt-viewer cloudstack-agent
 
 ## Prep system for CloudStack setup
 

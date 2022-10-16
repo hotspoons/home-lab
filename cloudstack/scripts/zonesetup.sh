@@ -18,7 +18,7 @@ pod_end=$POD_IP_END
 vlan_start=$POD_IP_START
 vlan_end=$POD_IP_END
  
-#Put space separated host ips in following
+## Put space separated host ips in following
 host_ips=$IP
 host_user=$VM_HOST_UN
 host_passwd=$VM_HOST_PW
