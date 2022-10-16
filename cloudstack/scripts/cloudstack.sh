@@ -4,6 +4,8 @@ if ! [ -s ".env" ]; then
   exit 1
 fi
 
+
+
 ## Read in .env file
 export $(grep -v '^#' .env | xargs)
 
@@ -27,5 +29,9 @@ service cloudstack-management restart
 
 curl -o /usr/bin/cmk -L https://github.com/apache/cloudstack-cloudmonkey/releases/download/6.2.0/cmk.linux.x86-64
 chmod +x /usr/bin/cmk
+
+cd ui-automation
+npm install
+npm run -s cypress:run -- --env username=$USERNAME,password=$PASSWORD --url=$AUTOMATION_URL
 
 #bash ./zonesetup.sh

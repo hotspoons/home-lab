@@ -1,10 +1,11 @@
 #!/bin/bash
 
-### PREREQUISITES - an AMD or Intel x64-based system with virtualization acceleration enabled; and plenty of RAM and disk space; and Rocky 8 boot media
+### PREREQUISITES - an AMD or Intel x64-based system with virtualization acceleration enabled; plenty of RAM and disk space; and Rocky 8 boot media
 
-### STEP 1 - install Rocky 8, set a static IP (nmcli or nmtui)
-### STEP 2 - curl -o home-lab.zip https://github.com/hotspoons/home-lab/archive/refs/heads/main.zip && unzip home-lab.zip && cd home-lab/cloudstack/scripts
-### STEP 3 - copy the file ".env.example" to ".env"; set values specific to your environment - at a minimum NIC, IP (from step 1), GW, DNS, VM_HOST_UN, VM_HOST_PW, NMASK, 
+### STEP 1 - install Rocky 8, set a static IP during install after first boot (nmcli or nmtui)
+### STEP 2 - curl -L -o home-lab-main.zip https://github.com/hotspoons/home-lab/archive/refs/heads/main.zip && unzip home-lab-main.zip && cd home-lab-main/cloudstack/scripts
+### STEP 3 - copy the file ".env.example" to ".env"; set values specific to your environment - at a minimum NIC, IP (from step 1), GW, DNS, VM_HOST_UN, VM_HOST_PW, NMASK, NIC,
+###        - POD_IP_START, POD_IP_END, ST_IP_START, ST_IP_END
 #####               And the following if you don't want to use the default setup for data: PRI_NFS, PRI_MNT, SEC_NFS, SEC_MNT
 
 ### STEP 4 - run this script
@@ -34,15 +35,17 @@ baseurl=http://download.cloudstack.org/centos/\$releasever/$CLOUDSTACK_VERSION/
 enabled=1
 gpgcheck=0
 EOF
+curl -sL https://rpm.nodesource.com/setup_18.x -o nodesource_setup.sh && bash nodesource_setup.sh
 
 ## Update system, then install new software
 dnf -y upgrade --refresh
-dnf install -y nfs-utils git wget terraform chrony mysql-server java-11-openjdk-devel cloudstack-management virt-install virt-viewer cloudstack-agent
+dnf install -y nfs-utils git wget terraform chrony mysql-server java-11-openjdk-devel cloudstack-management virt-install virt-viewer cloudstack-agent xorg-x11-server-Xvfb gtk2-devel gtk3-devel libnotify-devel GConf2 nss libXScrnSaver alsa-lib
 
 ## Prep system for CloudStack setup
 
 setenforce 0
 sed -i 's/=enforcing/=disabled/g' /etc/sysconfig/selinux
+sed -i 's/=enforcing/=disabled/g' /etc/selinux/config
 
 ## Setup NFS shares for CloudStack
 mkdir -p $CLOUDSTACK_NFS; chown -R cloud:cloud $CLOUDSTACK_NFS
@@ -53,15 +56,15 @@ exportfs -a
 
 ## Setup networking with virtual and master bridge networks
 nmcli connection add type bridge autoconnect yes con-name $BR ifname $BR
-nmcli connection modify $BR ipv4.addresses $IP/24 ipv4 .method manual
+nmcli connection modify $BR ipv4.addresses $IP/24 ipv4.method manual
 nmcli connection modify $BR ipv4.gateway $GW
 nmcli connection modify $BR ipv4.dns $DNS
-nmcli connection add type bridge-slave autoconnect yes con-name $VBR master $BR 
-nmcli connection add type bridge-slave autoconnect yes con-name $NIC master $BR 
+nmcli connection add type bridge-slave autoconnect yes con-name $VBR master $BR      
+nmcli connection add type bridge-slave autoconnect yes con-name $NIC ifname $NIC master $BR 
 nmcli connection up $BR
 
 ## Setup virtualization for CloudStack
-cat <<EOF >> /etc/libvirt/libvirtd.conf
+cat <<EOF >> /etc/libvirt/libvirtd.conf 
 listen_tls = 0
 listen_tcp = 1
 tcp_port = "16509"
