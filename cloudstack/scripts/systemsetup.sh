@@ -52,7 +52,6 @@ nmcli connection add type bridge autoconnect yes con-name $BR ifname $BR
 nmcli connection modify $BR ipv4.addresses $IP/24 ipv4.method manual
 nmcli connection modify $BR ipv4.gateway $GW
 nmcli connection modify $BR ipv4.dns $DNS
-nmcli connection add type bridge-slave autoconnect yes con-name $VBR master $BR      
 nmcli connection add type bridge-slave autoconnect yes con-name $NIC ifname $NIC master $BR 
 nmcli connection up $BR
 

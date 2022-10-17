@@ -15,8 +15,8 @@ nmask=$NMASK
 hpvr=$HYPERVISOR
 pod_start=$POD_IP_START
 pod_end=$POD_IP_END
-vlan_start=$POD_IP_START
-vlan_end=$POD_IP_END
+vlan_start=$VLAN_IP_START
+vlan_end=$VLAN_IP_END
  
 if [ -z $PRI_NFS] 
 then
