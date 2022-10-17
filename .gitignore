@@ -173,8 +173,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-
-cypress/videos
-cypress/videos/*
-cypress/screenshots
-cypress/screenshots/*
+cloudstack/scripts/ui-automation/cypress/videos
+cloudstack/scripts/ui-automation/cypress/screenshots

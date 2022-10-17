@@ -20,6 +20,11 @@ describe('Test Login Process', () => {
       cy.get('a').contains('View Users').click();
       cy.get('tbody.ant-table-tbody tr:first-child a').first().click();
 
+      cy.get('i.anticon-file-protect').parent().click();
+
+      // For older, slower machines, we need to pause for a hot sec so we don't accidentally pick up outstanding requests for our spy
+      cy.wait(2000);
+
       cy.intercept({
         method: 'GET',
         url: '/client/api/*',
@@ -27,12 +32,9 @@ describe('Test Login Process', () => {
         'apiSpy'
       );
 
-      cy.get('i.anticon-file-protect').parent().click();
       cy.get('div.ant-modal-footer button.ant-btn-primary').click();
 
       cy.wait('@apiSpy').then((interception) => {
-        cy.log("response: " + JSON.stringify(interception.response.body));
-        cy.wait(2000);
         const apiKey = interception.response.body.registeruserkeysresponse.userkeys.apikey;
         const secretKey = interception.response.body.registeruserkeysresponse.userkeys.secretkey;
         cy.log('API KEY = ' + apiKey);
