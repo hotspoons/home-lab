@@ -172,3 +172,9 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+
+cypress/videos
+cypress/videos/*
+cypress/screenshots
+cypress/screenshots/*

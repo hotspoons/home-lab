@@ -2,19 +2,12 @@
 
 ### PREREQUISITES - an AMD or Intel x64-based system with virtualization acceleration enabled; plenty of RAM and disk space; and Rocky 8 boot media
 
-### STEP 1 - install Rocky 8, set a static IP during install after first boot (nmcli or nmtui)
+### STEP 1 - install Rocky 8, set a static IP during install, or after first boot (nmcli or nmtui)
 ### STEP 2 - curl -L -o home-lab-main.zip https://github.com/hotspoons/home-lab/archive/refs/heads/main.zip && unzip home-lab-main.zip && cd home-lab-main/cloudstack/scripts
 ### STEP 3 - copy the file ".env.example" to ".env"; set values specific to your environment - at a minimum NIC, IP (from step 1), GW, DNS, VM_HOST_UN, VM_HOST_PW, NMASK, NIC,
 ###        - POD_IP_START, POD_IP_END, ST_IP_START, ST_IP_END
 #####               And the following if you don't want to use the default setup for data: PRI_NFS, PRI_MNT, SEC_NFS, SEC_MNT
-
 ### STEP 4 - run this script
-### STEP 5 - any hardware or environment-specific customizations to the OS setup, such as importing NFS mounts, setting up a RAID, etc. should be done before:
-### STEP 6 - run cloudstack.sh 
-### STEP 7 - log into the web GUI on http://host-ip-or-name:8080/client/#/user/login?redirect=%2F (username: admin, password: password) -> 
-#####              Accounts -> View Users (middle pane) -> admin -> generate keys (button in upper right) -> okay -> 
-#####              copy api key and secret keys to .env file, API_KEY and SECRET_KEY values respectively
-### STEP 8 - run zonesetup.sh
 
 if ! [ -s ".env" ]; then
   echo ".env file does not exist, cannot continue. Did you copy \".env.example\" to \".env\" and modify it per the instructions?"

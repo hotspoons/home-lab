@@ -1,3 +1,4 @@
+
 describe('Test Login Process', () => {
     it('should be able to log in the Test Site and show correct information', () => {
       cy.visit(Cypress.env('URL') + '#/user/login');
@@ -10,11 +11,33 @@ describe('Test Login Process', () => {
       cy.url().should('include', 'dashboard');
   
       cy.get('h2').should('include.text', 'Hello and Welcome to CloudStack');
-      cy.visit(Cypress.env('URL') + '#/account');
+      cy.visit(Cypress.env('URL') + '#/account', {
+        onBeforeLoad(win) {
+            cy.spy(win.navigator.clipboard, 'writeText').as('copy');
+        },
+    });
       cy.get('tbody.ant-table-tbody tr:first-child a').first().click();
       cy.get('a').contains('View Users').click();
       cy.get('tbody.ant-table-tbody tr:first-child a').first().click();
+
+      cy.intercept({
+        method: 'GET',
+        url: '/client/api/*',
+      }).as(
+        'apiSpy'
+      );
+
       cy.get('i.anticon-file-protect').parent().click();
       cy.get('div.ant-modal-footer button.ant-btn-primary').click();
+
+      cy.wait('@apiSpy').then((interception) => {
+        const apiKey = interception.response.body.registeruserkeysresponse.userkeys.apikey;
+        const secretKey = interception.response.body.registeruserkeysresponse.userkeys.secretkey;
+        cy.log('API KEY = ' + apiKey);
+        cy.log('SECRET KEY = ' + secretKey);
+        let contents = `\nAPI_KEY=${apiKey}\nSECRET_KEY=${secretKey}\n`;
+        cy.writeFile('../.env', contents, { flag: 'a+' });
+      });
+     
     });
   });

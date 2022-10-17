@@ -5,7 +5,6 @@ if ! [ -s ".env" ]; then
 fi
 
 
-
 ## Read in .env file
 export $(grep -v '^#' .env | xargs)
 
@@ -26,12 +25,14 @@ firewall-cmd --reload
 mysql -uroot -p$MYSQL_ROOT_PW  -Bse "USE cloud; UPDATE configuration SET value='true' WHERE name= 'cloud.kubernetes.service.enabled'"
 service cloudstack-management restart
 
-
+# Install cloudmonkey, used to automate initial zone setup not available in terraform tools
 curl -o /usr/bin/cmk -L https://github.com/apache/cloudstack-cloudmonkey/releases/download/6.2.0/cmk.linux.x86-64
 chmod +x /usr/bin/cmk
 
+# And because there doesn't seem to be a practical way to generate API key and secret from a command line, we will cheat and use some UI automation so this can be fully automated
 cd ui-automation
 npm install
-npm run -s cypress:run -- --env username=$USERNAME,password=$PASSWORD --url=$AUTOMATION_URL
+npm run -s cypress:run -- --env username=$USERNAME,password=$PASSWORD,url=$AUTOMATION_URL
+cd ..
 
 #bash ./zonesetup.sh
