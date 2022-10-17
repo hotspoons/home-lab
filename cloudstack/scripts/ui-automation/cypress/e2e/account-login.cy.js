@@ -1,7 +1,7 @@
 
 describe('Test Login Process', () => {
     it('should be able to log in the Test Site and show correct information', () => {
-      cy.visit(Cypress.env('URL') + '#/user/login');
+      cy.visit(Cypress.env('url') + '#/user/login');
   
       const username = Cypress.env('username');
       const password = Cypress.env('password');
@@ -11,7 +11,7 @@ describe('Test Login Process', () => {
       cy.url().should('include', 'dashboard');
   
       cy.get('h2').should('include.text', 'Hello and Welcome to CloudStack');
-      cy.visit(Cypress.env('URL') + '#/account', {
+      cy.visit(Cypress.env('url') + '#/account', {
         onBeforeLoad(win) {
             cy.spy(win.navigator.clipboard, 'writeText').as('copy');
         },
