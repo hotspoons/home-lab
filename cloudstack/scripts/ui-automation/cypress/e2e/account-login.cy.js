@@ -31,7 +31,8 @@ describe('Test Login Process', () => {
       cy.get('div.ant-modal-footer button.ant-btn-primary').click();
 
       cy.wait('@apiSpy').then((interception) => {
-        cy.log("response: " + JSON.stringify(interception.response));
+        cy.log("response: " + JSON.stringify(interception.response.body));
+        cy.wait(2000);
         const apiKey = interception.response.body.registeruserkeysresponse.userkeys.apikey;
         const secretKey = interception.response.body.registeruserkeysresponse.userkeys.secretkey;
         cy.log('API KEY = ' + apiKey);
