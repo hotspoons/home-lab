@@ -18,11 +18,13 @@ pod_end=$POD_IP_END
 vlan_start=$POD_IP_START
 vlan_end=$POD_IP_END
  
-if [ -z $PRI_NFS] then
-  $PRI_NFS = $IP
+if [ -z $PRI_NFS] 
+then
+  PRI_NFS=$IP
 fi
-if [ -z $SEC_NFS] then
-  $SEC_NFS = $IP
+if [ -z $SEC_NFS] 
+then
+  SEC_NFS=$IP
 fi
 
 ## Put space separated host ips in following
