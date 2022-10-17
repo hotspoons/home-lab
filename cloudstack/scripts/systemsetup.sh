@@ -4,9 +4,9 @@
 
 ### STEP 1 - install Rocky 8, set a static IP during install, or after first boot (nmcli or nmtui)
 ### STEP 2 - curl -L -o home-lab-main.zip https://github.com/hotspoons/home-lab/archive/refs/heads/main.zip && unzip home-lab-main.zip && cd home-lab-main/cloudstack/scripts
-### STEP 3 - copy the file ".env.example" to ".env"; set values specific to your environment - at a minimum NIC, IP (from step 1), GW, DNS, VM_HOST_UN, VM_HOST_PW, NMASK, NIC,
-###        - POD_IP_START, POD_IP_END, ST_IP_START, ST_IP_END
-#####               And the following if you don't want to use the default setup for data: PRI_NFS, PRI_MNT, SEC_NFS, SEC_MNT
+### STEP 3 - run "create_env.sh" script to generate ".env" file with some inferred values; edit and set values specific to your environment - at a minimum VM_HOST_UN, VM_HOST_PW, 
+###        - NMASK, NIC, POD_IP_START, POD_IP_END, ST_IP_START, ST_IP_END; and verify the inferred values for NIC, IP, GW, and DNS are correct
+#####               And the following if you don't want to use the default setup for data storage: PRI_NFS, PRI_MNT, SEC_NFS, SEC_MNT
 ### STEP 4 - run this script
 
 if ! [ -s ".env" ]; then
@@ -32,7 +32,7 @@ curl -sL https://rpm.nodesource.com/setup_18.x -o nodesource_setup.sh && bash no
 
 ## Update system, then install new software
 dnf -y upgrade --refresh
-dnf install -y nfs-utils git wget terraform chrony mysql-server java-11-openjdk-devel cloudstack-management virt-install virt-viewer cloudstack-agent xorg-x11-server-Xvfb gtk2-devel gtk3-devel libnotify-devel GConf2 nss libXScrnSaver alsa-lib
+dnf install -y nfs-utils git wget terraform chrony mysql-server java-11-openjdk-devel cloudstack-management virt-install virt-viewer cloudstack-agent xorg-x11-server-Xvfb gtk2-devel gtk3-devel libnotify-devel GConf2 nss libXScrnSaver alsa-lib nodejs
 
 ## Prep system for CloudStack setup
 

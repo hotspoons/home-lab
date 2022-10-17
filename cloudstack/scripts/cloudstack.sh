@@ -8,6 +8,9 @@ fi
 ## Read in .env file
 export $(grep -v '^#' .env | xargs)
 
+## local substitutions
+AUTOMATION_URL="http://$IP:8080/client/"
+
 ## Start MySQL server, set password
 systemctl start mysqld.service
 systemctl enable mysqld
