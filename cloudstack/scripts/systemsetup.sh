@@ -41,7 +41,7 @@ sed -i 's/=enforcing/=disabled/g' /etc/sysconfig/selinux
 sed -i 's/=enforcing/=disabled/g' /etc/selinux/config
 
 ## Setup NFS shares for CloudStack
-mkdir -p $CLOUDSTACK_NFS; chown -R cloud:cloud $CLOUDSTACK_NFS
+mkdir mkdir -p $CLOUDSTACK_NFS/data; -p $CLOUDSTACK_NFS/resources; chown -R cloud:cloud $CLOUDSTACK_NFS
 touch /etc/exports
 echo "$CLOUDSTACK_NFS       *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
 exportfs -a
