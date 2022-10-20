@@ -4,18 +4,43 @@
 
 ### STEP 1 - install Rocky 8, set a static IP during install, or after first boot (nmcli or nmtui)
 ### STEP 2 - curl -L -o home-lab-main.zip https://github.com/hotspoons/home-lab/archive/refs/heads/main.zip && unzip home-lab-main.zip && cd home-lab-main/cloudstack/scripts
-### STEP 3 - run "create_env.sh" script to generate ".env" file with some inferred values; edit and set values specific to your environment - at a minimum VM_HOST_UN, VM_HOST_PW, 
+### STEP 3 - edit generate ".env" file with some inferred values; edit and set values specific to your environment - at a minimum VM_HOST_UN, VM_HOST_PW, 
 ###        - NMASK, NIC, POD_IP_START, POD_IP_END, ST_IP_START, ST_IP_END; and verify the inferred values for NIC, IP, GW, and DNS are correct
 #####               And the following if you don't want to use the default setup for data storage: PRI_NFS, PRI_MNT, SEC_NFS, SEC_MNT
 ### STEP 4 - run this script
 
 if ! [ -s ".env" ]; then
-  echo ".env file does not exist, cannot continue. Did you copy \".env.example\" to \".env\" and modify it per the instructions?"
-  exit 1
+    echo ".env file does not exist, autogenerating..."
+    NIC=$(route | grep '^default' | grep -o '[^ ]*$')
+    IP=$(ip route get 1.2.3.4 | awk '{print $7}' | tr -s '\n')
+    GW=$(route -n | grep 'UG[ \t]' | awk '{print $2}')
+    DNS=$(( nmcli dev list || nmcli dev show ) 2>/dev/null | grep DNS | awk '{print $2}')
+
+    cp .env.example .env
+
+    echo "NIC=$NIC" >> .env
+    echo "IP=$IP" >> .env
+    echo "GW=$GW" >> .env
+    echo "DNS=$DNS" >> .env
+
+fi
+
+## If there is a .env.values file specific for this environment, read in the values
+if [ -s ".env.values" ]; then
+    export $(grep -v '^#' .values | xargs)
 fi
 
 ## Read in .env file
 export $(grep -v '^#' .env | xargs)
+
+if ! [ -z "$VM_HOST_PW" ]; then
+    VM_HOST_PW=
+    echo "Please provide the root password for this host:"
+    read -s VM_HOST_PW
+    echo "VM_HOST_PW=$VM_HOST_PW" >> .env
+fi
+
+## TODO if we need to override additional environment-specific values in an interactive manner, we can do Q&A here
 
 dnf install -y yum-utils
 
@@ -114,15 +139,17 @@ chmod +x /usr/bin/cmk
 CLOUDSTACK_UP=""
 # Wait for cloudstack to bootstrap. We will poll up to 5 minutes here every few seconds to see if it is online or not
 for i in {1..60}; do
-  echo "trying to contact cloudstack, plz hold..."
+  echo "trying to contact cloudstack, plz hold...($i of 60)"
   CLOUDSTACK_UP=$(curl -o /dev/null -s -w "%{http_code}\n" $AUTOMATION_URL | grep 200)
-  if [ -n $CLOUDSTACK_UP ]; then
+  if [[ $CLOUDSTACK_UP == "200" ]]; then
+    # if cloudstack first comes on line, give it some time to hydrate before we hit it with automation
+    sleep 30
     break
   fi
   sleep 5
 done
 
-if [ -n $CLOUDSTACK_UP ]; then
+if [[ $CLOUDSTACK_UP == "200" ]]; then
   # And because there doesn't seem to be a practical way to generate API key and secret from a command line, we will cheat and use some UI automation so this can be fully automated
   cd ui-automation
   npm install
