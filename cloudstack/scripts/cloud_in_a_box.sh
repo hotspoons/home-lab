@@ -66,10 +66,13 @@ sed -i 's/=enforcing/=disabled/g' /etc/sysconfig/selinux
 sed -i 's/=enforcing/=disabled/g' /etc/selinux/config
 
 ## Setup NFS shares for CloudStack
-mkdir mkdir -p $CLOUDSTACK_NFS/data; -p $CLOUDSTACK_NFS/resources; chown -R cloud:cloud $CLOUDSTACK_NFS
+mkdir mkdir -p $CLOUDSTACK_NFS/data; mkdir -p $CLOUDSTACK_NFS/resources; chown -R cloud:cloud $CLOUDSTACK_NFS
 touch /etc/exports
-echo "$CLOUDSTACK_NFS       *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
+echo "$CLOUDSTACK_NFS/data        *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
+echo "$CLOUDSTACK_NFS/resources   *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
 exportfs -a
+
+systemctl enable nfs-server.service
 
 
 ## Setup networking with virtual and master bridge networks
@@ -143,6 +146,7 @@ for i in {1..60}; do
   CLOUDSTACK_UP=$(curl -o /dev/null -s -w "%{http_code}\n" $AUTOMATION_URL | grep 200)
   if [[ $CLOUDSTACK_UP == "200" ]]; then
     # if cloudstack first comes on line, give it some time to hydrate before we hit it with automation
+    echo "cloudstack is up, giving it 30 hot seconds to hydrate before we hit it with UI automation"
     sleep 30
     break
   fi
