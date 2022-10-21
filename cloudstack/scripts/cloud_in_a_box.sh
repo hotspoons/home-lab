@@ -27,7 +27,7 @@ fi
 
 ## If there is a .env.values file specific for this environment, read in the values
 if [ -s ".env.values" ]; then
-    export $(grep -v '^#' .values | xargs)
+    export $(grep -v '^#' .env.values | xargs)
 fi
 
 ## Read in .env file
