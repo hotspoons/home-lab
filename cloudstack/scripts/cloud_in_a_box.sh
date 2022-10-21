@@ -33,7 +33,7 @@ fi
 ## Read in .env file
 export $(grep -v '^#' .env | xargs)
 
-if ! [ -z "$VM_HOST_PW" ]; then
+if [ -z "$VM_HOST_PW" ]; then
     VM_HOST_PW=
     echo "Please provide the root password for this host:"
     read -s VM_HOST_PW
