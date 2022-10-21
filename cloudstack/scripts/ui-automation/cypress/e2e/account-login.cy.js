@@ -1,5 +1,5 @@
 
-describe('Test Login Process', () => {
+describe('Automate credentials scraping from cloudstack', () => {
     it('should be able to log in the Test Site and show correct information', () => {
       cy.visit(Cypress.env('url') + '#/user/login');
   
@@ -10,7 +10,7 @@ describe('Test Login Process', () => {
   
       cy.url().should('include', 'dashboard');
   
-      cy.get('h2').should('include.text', 'Hello and Welcome to CloudStack');
+      cy.get('h2').should('include.text', 'Hello and welcome to CloudStack™');
       cy.visit(Cypress.env('url') + '#/account', {
         onBeforeLoad(win) {
             cy.spy(win.navigator.clipboard, 'writeText').as('copy');
@@ -20,7 +20,7 @@ describe('Test Login Process', () => {
       cy.get('a').contains('View Users').click();
       cy.get('tbody.ant-table-tbody tr:first-child a').first().click();
 
-      cy.get('i.anticon-file-protect').parent().click();
+      cy.get('span.anticon-file-protect').parent().click();
 
       // For older, slower machines, we need to pause for a hot sec so we don't accidentally pick up outstanding requests for our spy
       cy.wait(2000);
