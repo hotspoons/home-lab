@@ -2,7 +2,7 @@
 
 ### PREREQUISITES - an AMD or Intel x64-based system with virtualization acceleration enabled; plenty of RAM and disk space; and Rocky 8 boot media
 
-### STEP 1 - install Rocky 8, set a static IP during install, or after first boot (nmcli or nmtui)
+### STEP 1 - install Rocky 8, ensure there is network connectivity on one and only one NIC
 ### STEP 2 - curl -L -o home-lab-main.zip https://github.com/hotspoons/home-lab/archive/refs/heads/main.zip && unzip home-lab-main.zip && cd home-lab-main/cloudstack/scripts
 ### STEP 3 - edit generate ".env" file with some inferred values; edit and set values specific to your environment - at a minimum VM_HOST_UN, VM_HOST_PW, 
 ###        - NMASK, NIC, POD_IP_START, POD_IP_END, ST_IP_START, ST_IP_END; and verify the inferred values for NIC, IP, GW, and DNS are correct
@@ -73,6 +73,7 @@ echo "$CLOUDSTACK_NFS/resources   *(rw,async,no_root_squash,no_subtree_check)" >
 exportfs -a
 
 systemctl enable nfs-server.service
+systemctl start nfs-server.service
 
 
 ## Setup networking with virtual and master bridge networks
@@ -141,11 +142,10 @@ chmod +x /usr/bin/cmk
 
 CLOUDSTACK_UP=""
 # Wait for cloudstack to bootstrap. We will poll up to 5 minutes here every few seconds to see if it is online or not
-for i in {1..60}; do
-  echo "trying to contact cloudstack, plz hold...($i of 60)"
+for i in {1..$UI_RETRIES}; do
+  echo "trying to contact cloudstack, plz hold...($i of $UI_RETRIES)"
   CLOUDSTACK_UP=$(curl -o /dev/null -s -w "%{http_code}\n" $AUTOMATION_URL | grep 200)
   if [[ $CLOUDSTACK_UP == "200" ]]; then
-    # if cloudstack first comes on line, give it some time to hydrate before we hit it with automation
     echo "cloudstack is up, giving it 30 hot seconds to hydrate before we hit it with UI automation"
     sleep 30
     break
@@ -157,7 +157,7 @@ if [[ $CLOUDSTACK_UP == "200" ]]; then
   # And because there doesn't seem to be a practical way to generate API key and secret from a command line, we will cheat and use some UI automation so this can be fully automated
   cd ui-automation
   npm install
-  npm run -s cypress:run -- --env username=$USERNAME,password=$PASSWORD,url=$AUTOMATION_URL
+  npm run -s cypress:run -- --env username=$USERNAME,password=$PASSWORD,url=$AUTOMATION_URL,CLOUDSTACK_VERSION=$CLOUDSTACK_VERSION
   cd ..
 
   #bash ./zonesetup.sh

@@ -1,6 +1,26 @@
 
 describe('Automate credentials scraping from cloudstack', () => {
     it('should be able to log in the Test Site and show correct information', () => {
+      let cs_ver = "4.17";
+      let gen_key_selector = 'span.anticon-file-protect';
+      let ok_button_selector = 'div.ant-modal-body button.ant-btn-primary';
+      if(Cypress.env('CLOUDSTACK_VERSION') !== undefined){
+        cs_ver = Cypress.env('CLOUDSTACK_VERSION');
+      }
+
+      switch(cs_ver){
+        case "4.15":
+        case "4.16":
+          gen_key_selector = 'i.anticon-file-protect';
+          ok_button_selector = 'div.ant-modal-footer button.ant-btn-primary';
+          break;
+        case "4.17":
+        default:
+          gen_key_selector = 'span.anticon-file-protect';
+          ok_button_selector = 'div.ant-modal-body button.ant-btn-primary';
+          break;
+      }
+
       cy.visit(Cypress.env('url') + '#/user/login');
   
       const username = Cypress.env('username');
@@ -10,17 +30,13 @@ describe('Automate credentials scraping from cloudstack', () => {
   
       cy.url().should('include', 'dashboard');
   
-      cy.get('h2').should('include.text', 'Hello and welcome to CloudStack™');
-      cy.visit(Cypress.env('url') + '#/account', {
-        onBeforeLoad(win) {
-            cy.spy(win.navigator.clipboard, 'writeText').as('copy');
-        },
-    });
+      //cy.get('h2').should('include.text', 'Hello and welcome to CloudStack™');
+      cy.visit(Cypress.env('url') + '#/account');
       cy.get('tbody.ant-table-tbody tr:first-child a').first().click();
       cy.get('a').contains('View Users').click();
       cy.get('tbody.ant-table-tbody tr:first-child a').first().click();
 
-      cy.get('span.anticon-file-protect').parent().click();
+      cy.get(gen_key_selector).parent().click();
 
       // For older, slower machines, we need to pause for a hot sec so we don't accidentally pick up outstanding requests for our spy
       cy.wait(2000);
@@ -32,7 +48,7 @@ describe('Automate credentials scraping from cloudstack', () => {
         'apiSpy'
       );
 
-      cy.get('div.ant-modal-footer button.ant-btn-primary').click();
+      cy.get(ok_button_selector).click();
 
       cy.wait('@apiSpy').then((interception) => {
         const apiKey = interception.response.body.registeruserkeysresponse.userkeys.apikey;
