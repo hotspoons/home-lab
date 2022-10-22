@@ -142,8 +142,8 @@ chmod +x /usr/bin/cmk
 
 CLOUDSTACK_UP=""
 # Wait for cloudstack to bootstrap. We will poll up to 5 minutes here every few seconds to see if it is online or not
-for i in {1..$UI_RETRIES}; do
-  echo "trying to contact cloudstack, plz hold...($i of $UI_RETRIES)"
+for i in {1..120}; do
+  echo "trying to contact cloudstack, plz hold...($i of 120)"
   CLOUDSTACK_UP=$(curl -o /dev/null -s -w "%{http_code}\n" $AUTOMATION_URL | grep 200)
   if [[ $CLOUDSTACK_UP == "200" ]]; then
     echo "cloudstack is up, giving it 30 hot seconds to hydrate before we hit it with UI automation"
@@ -163,6 +163,7 @@ if [[ $CLOUDSTACK_UP == "200" ]]; then
   #bash ./zonesetup.sh
 else
   echo "Cloudstack not setup correctly, exiting"
+  exit
 fi
 
 
