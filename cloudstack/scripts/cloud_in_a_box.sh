@@ -4,8 +4,8 @@
 
 ### STEP 1 - install Rocky 8, ensure there is network connectivity on one and only one NIC
 ### STEP 2 - curl -L -o home-lab-main.zip https://github.com/hotspoons/home-lab/archive/refs/heads/main.zip && unzip home-lab-main.zip && cd home-lab-main/cloudstack/scripts
-### STEP 3 - edit generate ".env" file with some inferred values; edit and set values specific to your environment - at a minimum VM_HOST_UN, VM_HOST_PW, 
-###        - NMASK, NIC, POD_IP_START, POD_IP_END, ST_IP_START, ST_IP_END; and verify the inferred values for NIC, IP, GW, and DNS are correct
+### STEP 3 - edit generate ".env" file with some inferred values; edit and set values specific to your environment - at a minimum
+###        - NMASK, POD_IP_START, POD_IP_END, and verify the inferred values for NIC, IP, GW, and DNS are correct in the generated .env file
 #####               And the following if you don't want to use the default setup for data storage: PRI_NFS, PRI_MNT, SEC_NFS, SEC_MNT
 ### STEP 4 - run this script
 
@@ -14,8 +14,11 @@ if ! [ -s ".env" ]; then
     NIC=$(route | grep '^default' | grep -o '[^ ]*$')
     IP=$(ip route get 1.2.3.4 | awk '{print $7}' | tr -s '\n')
     GW=$(route -n | grep 'UG[ \t]' | awk '{print $2}')
+    MAC=$(cat /sys/class/net/$NIC/address)
+    # TODO we should figure out a reliable way to get the network mask, e.g.
+    #NMASK=$(ifconfig NIC | awk '/netmask/{split($4,a,":"); print a[1]}')
     DNS=$(( nmcli dev list || nmcli dev show ) 2>/dev/null | grep DNS | awk '{print $2}')
-
+    
     cp .env.example .env
 
     echo "NIC=$NIC" >> .env
@@ -58,18 +61,20 @@ curl -sL https://rpm.nodesource.com/setup_18.x -o nodesource_setup.sh && bash no
 ## Update system, then install new software
 dnf -y upgrade --refresh
 dnf install -y nfs-utils git wget terraform chrony mysql-server java-11-openjdk-devel cloudstack-management virt-install virt-viewer cloudstack-agent xorg-x11-server-Xvfb gtk2-devel gtk3-devel libnotify-devel GConf2 nss libXScrnSaver alsa-lib nodejs
-
+dnf install -y http://mirror.centos.org/centos/7/os/x86_64/Packages/bridge-utils-1.5-9.el7.x86_64.rpm
 ## Prep system for CloudStack setup
 
 setenforce 0
 sed -i 's/=enforcing/=disabled/g' /etc/sysconfig/selinux
 sed -i 's/=enforcing/=disabled/g' /etc/selinux/config
+echo "SELINUX=permissive" >> /etc/selinux/config
 
 ## Setup NFS shares for CloudStack
-mkdir mkdir -p $CLOUDSTACK_NFS/data; mkdir -p $CLOUDSTACK_NFS/resources; chown -R cloud:cloud $CLOUDSTACK_NFS
+mkdir mkdir -p $CLOUDSTACK_NFS/data; mkdir -p $CLOUDSTACK_NFS/resources; mkdir -p $CLOUDSTACK_NFS/template; chown -R cloud:cloud $CLOUDSTACK_NFS
 touch /etc/exports
 echo "$CLOUDSTACK_NFS/data        *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
 echo "$CLOUDSTACK_NFS/resources   *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
+echo "$CLOUDSTACK_NFS/template    *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
 exportfs -a
 
 systemctl enable nfs-server.service
@@ -77,12 +82,60 @@ systemctl start nfs-server.service
 
 
 ## Setup networking with virtual and master bridge networks
-nmcli connection add type bridge autoconnect yes con-name $BR ifname $BR
-nmcli connection modify $BR ipv4.addresses $IP/24 ipv4.method manual
-nmcli connection modify $BR ipv4.gateway $GW
-nmcli connection modify $BR ipv4.dns $DNS
-nmcli connection add type bridge-slave autoconnect yes con-name $NIC ifname $NIC master $BR 
-nmcli connection up $BR
+
+cat <<EOF >> cat /etc/sysconfig/network-scripts/ifcfg-$NIC
+DEVICE=$NIC
+HWADDR=$MAC
+ONBOOT=yes
+HOTPLUG=no
+BOOTPROTO=none
+TYPE=Ethernet
+BRIDGE=cloudbr0
+EOF
+
+cat <<EOF >> cat /etc/sysconfig/network-scripts/ifcfg-$NIC.200
+DEVICE=$NIC
+HWADDR=$MAC
+ONBOOT=yes
+HOTPLUG=no
+BOOTPROTO=none
+TYPE=Ethernet
+VLAN=yes
+BRIDGE=cloudbr1
+EOF
+
+cat <<EOF >> cat /etc/sysconfig/network-scripts/ifcfg-cloudbr0
+DEVICE=cloudbr0
+TYPE=Bridge
+ONBOOT=yes
+BOOTPROTO=none
+IPV6INIT=no
+IPV6_AUTOCONF=no
+DELAY=5
+IPADDR=$IP
+GATEWAY=$GW
+NETMASK=$NMASK
+DNS1=$DNS
+STP=yes
+EOF
+
+cat <<EOF >> cat /etc/sysconfig/network-scripts/ifcfg-cloudbr1
+DEVICE=cloudbr1
+TYPE=Bridge
+ONBOOT=yes
+BOOTPROTO=none
+IPV6INIT=no
+IPV6_AUTOCONF=no
+DELAY=5
+STP=yes
+EOF
+
+nmcli networking off && nmcli networking on
+
+echo 'LIBVIRTD_ARGS=--listen' >> /etc/sysconfig/libvirtd
+
+systemctl mask libvirtd.socket libvirtd-ro.socket libvirtd-admin.socket libvirtd-tls.socket libvirtd-tcp.socket
+systemctl daemon-reload
 
 ## Setup virtualization for CloudStack
 cat <<EOF >> /etc/libvirt/libvirtd.conf 
@@ -90,15 +143,31 @@ listen_tls = 0
 listen_tcp = 1
 tcp_port = "16509"
 auth_tcp = "none"
+mdns_adv = 0
 EOF
 
-sed -i 's/LIBVIRTD_ARGS=/LIBVIRTD_ARGS=--listen /g' /etc/sysconfig/libvirtd
-
-systemctl mask libvirtd.socket libvirtd-ro.socket libvirtd-admin.socket libvirtd-tls.socket libvirtd-tcp.socket
-systemctl daemon-reload
 systemctl start libvirtd
 systemctl enable libvirtd
 systemctl status libvirtd
+
+
+touch /etc/sysctl.d/99-netfilter-bridge.conf
+echo "net.bridge.bridge-nf-call-ip6tables = 0" >> /etc/sysctl.d/99-netfilter-bridge.conf
+echo "net.bridge.bridge-nf-call-iptables = 0" >> /etc/sysctl.d/99-netfilter-bridge.conf
+echo "net.bridge.bridge-nf-call-arptables = 0" >> /etc/sysctl.d/99-netfilter-bridge.conf
+modprobe br_netfilter
+sysctl -p /etc/sysctl.d/99-netfilter-bridge.conf
+
+#cat <<EOF > ./bridged-network.xml
+#<network>
+#    <name>bridged-network</name>
+#    <forward mode="bridge" />
+#    <bridge name="cloudbr0" />
+#</network>
+#EOF
+#virsh net-define bridged-network.xml
+#virsh net-start bridged-network
+#virsh net-autostart bridged-network
 
 ##############################################################################################################
 ##                                                                                                          ##
@@ -124,8 +193,12 @@ cloudstack-setup-management
 firewall-cmd --zone=public --permanent --add-port={8080,8250,8443,9090}/tcp
 firewall-cmd --reload
 
-/usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt -m $CLOUDSTACK_NFS -u http://download.cloudstack.org/systemvm/$CLOUDSTACK_VERSION/systemvmtemplate-$CLOUDSTACK_VERSION.0-kvm.qcow2.bz2 -h kvm -F
+## Disable firewall
+systemctl stop firewalld
+systemctl disable firewalld
 
+/usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt -m $CLOUDSTACK_NFS -u http://download.cloudstack.org/systemvm/$CLOUDSTACK_VERSION/systemvmtemplate-$CLOUDSTACK_VERSION.0-kvm.qcow2.bz2 -h kvm -F
+chown -R cloud:cloud $CLOUDSTACK_NFS/template
 
 
 service cloudstack-management restart
