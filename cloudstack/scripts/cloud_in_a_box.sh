@@ -81,56 +81,6 @@ systemctl enable nfs-server.service
 systemctl start nfs-server.service
 
 
-## Setup networking with virtual and master bridge networks
-
-cat <<EOF >> cat /etc/sysconfig/network-scripts/ifcfg-$NIC
-DEVICE=$NIC
-HWADDR=$MAC
-ONBOOT=yes
-HOTPLUG=no
-BOOTPROTO=none
-TYPE=Ethernet
-BRIDGE=cloudbr0
-EOF
-
-cat <<EOF >> cat /etc/sysconfig/network-scripts/ifcfg-$NIC.200
-DEVICE=$NIC
-HWADDR=$MAC
-ONBOOT=yes
-HOTPLUG=no
-BOOTPROTO=none
-TYPE=Ethernet
-VLAN=yes
-BRIDGE=cloudbr1
-EOF
-
-cat <<EOF >> cat /etc/sysconfig/network-scripts/ifcfg-cloudbr0
-DEVICE=cloudbr0
-TYPE=Bridge
-ONBOOT=yes
-BOOTPROTO=none
-IPV6INIT=no
-IPV6_AUTOCONF=no
-DELAY=5
-IPADDR=$IP
-GATEWAY=$GW
-NETMASK=$NMASK
-DNS1=$DNS
-STP=yes
-EOF
-
-cat <<EOF >> cat /etc/sysconfig/network-scripts/ifcfg-cloudbr1
-DEVICE=cloudbr1
-TYPE=Bridge
-ONBOOT=yes
-BOOTPROTO=none
-IPV6INIT=no
-IPV6_AUTOCONF=no
-DELAY=5
-STP=yes
-EOF
-
-nmcli networking off && nmcli networking on
 
 echo 'LIBVIRTD_ARGS=--listen' >> /etc/sysconfig/libvirtd
 
@@ -158,16 +108,57 @@ echo "net.bridge.bridge-nf-call-arptables = 0" >> /etc/sysctl.d/99-netfilter-bri
 modprobe br_netfilter
 sysctl -p /etc/sysctl.d/99-netfilter-bridge.conf
 
-#cat <<EOF > ./bridged-network.xml
-#<network>
-#    <name>bridged-network</name>
-#    <forward mode="bridge" />
-#    <bridge name="cloudbr0" />
-#</network>
-#EOF
-#virsh net-define bridged-network.xml
-#virsh net-start bridged-network
-#virsh net-autostart bridged-network
+## Setup networking with virtual and master bridge networks
+
+cat <<EOF > /etc/sysconfig/network-scripts/ifcfg-$NIC
+DEVICE=$NIC
+HWADDR=$MAC
+ONBOOT=yes
+HOTPLUG=no
+BOOTPROTO=none
+TYPE=Ethernet
+BRIDGE=cloudbr0
+EOF
+
+cat <<EOF > /etc/sysconfig/network-scripts/ifcfg-$NIC.200
+DEVICE=$NIC
+HWADDR=$MAC
+ONBOOT=yes
+HOTPLUG=no
+BOOTPROTO=none
+TYPE=Ethernet
+VLAN=yes
+BRIDGE=cloudbr1
+EOF
+
+cat <<EOF > /etc/sysconfig/network-scripts/ifcfg-cloudbr0
+DEVICE=cloudbr0
+TYPE=Bridge
+ONBOOT=yes
+BOOTPROTO=none
+IPV6INIT=no
+IPV6_AUTOCONF=no
+DELAY=5
+IPADDR=$IP
+GATEWAY=$GW
+NETMASK=$NMASK
+DNS1=$DNS
+STP=yes
+EOF
+
+cat <<EOF > /etc/sysconfig/network-scripts/ifcfg-cloudbr1
+DEVICE=cloudbr1
+TYPE=Bridge
+ONBOOT=yes
+BOOTPROTO=none
+IPV6INIT=no
+IPV6_AUTOCONF=no
+DELAY=5
+STP=yes
+EOF
+
+nmcli networking off && nmcli networking on
+
 
 ##############################################################################################################
 ##                                                                                                          ##
@@ -334,3 +325,18 @@ echo "Added secondary storage"
  
 $cli update zone allocationstate=Enabled id=$zone_id
 echo "Basic zone deloyment completed!"
+
+
+
+##############################################################################################################
+##                                                                                                          ##
+##                          NOW WE SETUP TERRAFORM ENV VARS WITH AN ENV FILE                                ##
+##                                                                                                          ##
+##############################################################################################################
+TF_ENV=../terraform/.env
+touch $TF_ENV && chmod +x $TF_ENV
+echo "#!/bin/bash" > $TF_ENV
+echo "export TF_VAR_api_url=http://$IP:8080/client/api" >> $TF_ENV
+echo "export TF_VAR_api_key=$API_KEY" >> $TF_ENV
+echo "export TF_VAR_secret_key=$SECRET_KEY" >> $TF_ENV
+echo "export TF_VAR_zone_name=

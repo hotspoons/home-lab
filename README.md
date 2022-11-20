@@ -32,7 +32,7 @@ curl -L -o home-lab-main.zip https://github.com/hotspoons/home-lab/archive/refs/
 update `NMASK`, `POD_IP_START`, and `POD_IP_END` to match your environment, and verify the inferred values for 
 `NIC`, `IP`, `GW`, and `DNS` are correct in the generated .env file. If you wish to use a different host for NFS mounts, 
 provide those values in `PRI_NFS`, `PRI_MNT`, `SEC_NFS`, `SEC_MNT`
-3. Run `./cloud_in_a_box.sh`
+3. Run `./cloud_in_a_box.sh`, and provide the root password when prompted
 4. If you wish to change the IP address of `cloudbr0`, do that now. Restart the host.
 
 *DO NOT RUN THIS SCRIPT ON A HOST YOU CARE ABOUT, THIS WILL FUNDAMENTALLY ALTER THE NATURE OF THE HOST AND IT WILL BE UNSUITABLE FOR MANY PURPOSES*

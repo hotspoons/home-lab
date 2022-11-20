@@ -16,4 +16,6 @@ provider "cloudstack" {
   secret_key = var.secret_key
 }
 
-
+data "external" "env" {
+  program = ["${path.module}/.env"]
+}
