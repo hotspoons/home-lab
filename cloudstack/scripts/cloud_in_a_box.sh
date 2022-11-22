@@ -4,7 +4,7 @@
 
 ### STEP 1 - install Rocky 8, ensure there is network connectivity on one and only one NIC
 ### STEP 2 - curl -L -o home-lab-main.zip https://github.com/hotspoons/home-lab/archive/refs/heads/main.zip && unzip home-lab-main.zip && cd home-lab-main/cloudstack/scripts
-### STEP 3 - edit generate ".env" file with some inferred values; edit and set values specific to your environment - at a minimum
+### STEP 3 - run './create_env.sh'; edit generated ".env" file with some inferred values; edit and set values specific to your environment - at a minimum
 ###        - NMASK, POD_IP_START, POD_IP_END, and verify the inferred values for NIC, IP, GW, and DNS are correct in the generated .env file
 #####               And the following if you don't want to use the default setup for data storage: PRI_NFS, PRI_MNT, SEC_NFS, SEC_MNT
 ### STEP 4 - run this script
@@ -25,6 +25,7 @@ if ! [ -s ".env" ]; then
     echo "IP=$IP" >> .env
     echo "GW=$GW" >> .env
     echo "DNS=$DNS" >> .env
+    echo "MAC=$MAC" >> .env
 
 fi
 
@@ -98,8 +99,6 @@ EOF
 
 systemctl start libvirtd
 systemctl enable libvirtd
-systemctl status libvirtd
-
 
 touch /etc/sysctl.d/99-netfilter-bridge.conf
 echo "net.bridge.bridge-nf-call-ip6tables = 0" >> /etc/sysctl.d/99-netfilter-bridge.conf
@@ -157,8 +156,7 @@ DELAY=5
 STP=yes
 EOF
 
-nmcli networking off && nmcli networking on
-
+systemctl restart NetworkManager.service
 
 ##############################################################################################################
 ##                                                                                                          ##
@@ -298,7 +296,12 @@ netoff_id=`$cli -o text list networkofferings name=DefaultSharedNetworkOfferingW
 $cli create network zoneid=$zone_id name=guestNetworkForBasicZone displaytext=guestNetworkForBasicZone networkofferingid=$netoff_id
 net_id=`$cli -o text list networks | grep ^id\ = | awk '{print $3}'`
 echo "Created network $net_id for zone" $zone_id
- 
+
+secgroup_id=`$cli -o text list securitygroups name=default | grep ^id\ = | awk '{print $3}'`
+$cli authorize securitygroupingress securitygroupid=$secgroup_id protocol=all cidrlist=0.0.0.0/0
+$cli authorize securitygroupegress securitygroupid=$secgroup_id protocol=all cidrlist=0.0.0.0/0
+echo "Setup ingress and egress to/from all for security group $secgroup_id"
+
 $cli create pod name=$POD_NM zoneid=$zone_id gateway=$gw netmask=$nmask startip=$pod_start endip=$pod_end
 pod_id=`$cli -o text list pods | grep ^id\ = | awk '{print $3}'`
 echo "Created pod"
@@ -339,4 +342,4 @@ echo "#!/bin/bash" > $TF_ENV
 echo "export TF_VAR_api_url=http://$IP:8080/client/api" >> $TF_ENV
 echo "export TF_VAR_api_key=$API_KEY" >> $TF_ENV
 echo "export TF_VAR_secret_key=$SECRET_KEY" >> $TF_ENV
-echo "export TF_VAR_zone_name=
+echo "export TF_VAR_zone_name=$ZONE_NM" >> $TF_ENV
