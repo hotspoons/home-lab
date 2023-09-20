@@ -1,39 +1,44 @@
-#Cluster-level vars
-variable "api_url" {
-    description = "Cloudstack API URL"
+
+variable "storage_pool_path" {
+    description = "The path for the VM storage pool"
     type = string
-}
-variable "api_key" {
-    description = "Cloudstack API key"
-    type = string
-}
-variable "secret_key" {
-    description = "Cloudstack secret key"
-    type = string
+    default = "/tmp/vms"
 }
 
-variable "cidr_block" {
-    description = "CIDR block for default zone"
+variable "image_path" {
+    description = "The path or URL for the VM source image"
     type = string
+    default = ""
 }
 
-variable "zone_name" {
-    description = "Zone name"
+variable "remote_host" {
+    description = "A URI in the format 'qemu+ssh://host-name' for remote execution of Terraform"
     type = string
+    default = "qemu+ssh://host-name"
 }
 
-#Compute-level vars
+variable "compute_name" {
+    description = "A name for these compute nodes, e.g. \"rocky\", \"ubuntu\""
+    type = string
+    default = ""
+}
 
 variable "memory" {
-    description = "The amount of guranteed RAM for each compute node, in bytes. Defaults to 2GB (in bytes)"
+    description = "The amount of RAM for the compute node in MB, defaults to 4096"
     type = string
-    default = "2147483648"
+    default = "4096"
 }
 
-variable "maximum_memory" {
-    description = "The maximum amount of RAM for each compute node, in bytes. Defaults to 2GB (in bytes)"
+variable "cpu_cores" {
+    description = "Number of CPU cores, defaults to 4"
+    type = number
+    default = 4
+}
+
+variable "network_bridge" {
+    description = "The network bridge interface to bind this VM to"
     type = string
-    default = "2147483648"
+    default = "br0"
 }
 
 variable "domain_suffix" {
@@ -42,31 +47,10 @@ variable "domain_suffix" {
     default = ""
 }
 
-variable "cpu_cores" {
-    description = "Number of CPU cores, defaults to 2"
+variable "root_password" {
+    description = "Root password for compute instances"
     type = string
-    default = "2"
-}
-
-variable "cpu_sockets" {
-    description = "Number of CPU sockets, defaults to 1"
-    default = "1"
-}
-
-variable "cpu_threads" {
-    description = "CPU threads, defaults to 1"
-    default = "1"
-}
-
-variable "vnic_profile_id" {
-    description = "Profile ID for VNIC"
-    default = "0000000a-000a-000a-000a-000000000398"
-}
-
-variable "initialization_commands" {
-    description = "A list of commands to be executed on first start, such as resetting a password - all commands must be XML encoded!"
-    type = list(string)
-    default = ["echo &#39;works&#39;"]
+    default = "changeme"
 }
 
 variable "ssh_authorized_keys" {
@@ -76,20 +60,6 @@ variable "ssh_authorized_keys" {
 
 variable "ssh_private_key" {
     description = "An SSH private key corresponding to one of the public keys, used to access the VM"
-}
-
-variable "template_id" {
-    description = "The template ID from your oVirt install you wish to use as the baseline for your compute"
-}
-
-variable "master_name" {
-    description = "The name for the Kubernetes master node"
-    default = "k8s-master"
-}
-
-variable "worker_name" {
-    description = "The name for Kubernetes compute nodes, suffixed with an index"
-    default = "k8s-node"
 }
 
 #Kubernetes setup

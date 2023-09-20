@@ -1,0 +1,37 @@
+# VM setup
+
+storage_pool_path       = "/tmp/vms/k8s"
+image_path              = "/media/import/media/Projects/iac/images/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
+remote_host             = "qemu+ssh://file-server.lan"
+compute_name            = "rocky-k8s-host"
+memory                  = "8192"
+cpu_cores               = 8
+network_bridge          = "ovirtmgmt"
+root_password           = "changeit"
+
+# Kubernetes settings
+nfs_server              = "vm-host.siomporas.com"
+nfs_path                = "/working/kubernetes-data"
+nfs_provision_name      = "siomporas.com/nfs"
+start_ip                = "192.168.1.220"
+end_ip                  = "192.168.1.225"
+base_arch               = "x86_64"
+aarch                   = "amd64"
+containerd_version      = "1.6.6-3.1.el8"
+helm_version            = "3.9.0"
+metallb_version         = "0.13.3"
+compute_nodes           = 1
+pod_network_cidr        = "192.168.0.0/16"
+
+ssh_authorized_keys     = [
+    "ssh-rsa ...= root@vm-host.siomporas.com"
+    ]
+ssh_private_key        = <<EOF
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3B...b20B
+-----END OPENSSH PRIVATE KEY-----
+EOF
+
+initialization_commands = [
+    "echo \"password\" | passwd --stdin root"
+    ]
