@@ -33,7 +33,6 @@ locals{
     nfs_provision_name: var.nfs_provision_name,
     start_ip: var.start_ip,
     end_ip: var.end_ip,
-    metallb_version: var.metallb_version,
     pod_network_cidr: var.pod_network_cidr,
     join_cmd_port: var.join_cmd_port,
   })))

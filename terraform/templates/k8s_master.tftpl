@@ -7,16 +7,12 @@ NFS_PROVISION_NAME=${nfs_provision_name}
 ## IP Address range for load balancer
 START_IP=${start_ip}
 END_IP=${end_ip}
-METALLB_VERSION=${metallb_version}
 POD_NETWORK_CIDR=${pod_network_cidr}
 JOIN_CMD_PORT=${join_cmd_port}
 
 
 #Kubernetes utilities setup for persistent volumes, dashboard, and metal load balancer
 DASHBOARD_URL=https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended.yaml
-NFS_CLIENT_PROVISIONER_CTNR=quay.io/external_storage/nfs-client-provisioner:latest
-METALLB_NAMESPACE_URL=https://raw.githubusercontent.com/metallb/metallb/v$METALLB_VERSION/manifests/namespace.yaml
-METALLB_URL=https://raw.githubusercontent.com/metallb/metallb/v$METALLB_VERSION/manifests/metallb.yaml
 
 ################################################
 ## Setup firewall rules                       ##
@@ -40,47 +36,16 @@ kubectl get nodes
 
 
 ################################################
-## Setup cluster for admin dashboard          ##
+## Reset everything, clear docker cache       ##
 ################################################
 
-kubectl apply -f $DASHBOARD_URL
+mkdir -p /tmp/join-cluster
+kubeadm token create --print-join-command > /tmp/join-cluster/join_kubernetes_cluster.sh
 
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: admin-user
-  namespace: kubernetes-dashboard
-EOF
+# TODO - this should probably be over SSL and at least use a shared secret to secure it
 
-cat <<EOF | kubectl apply -f -
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: admin-user
-roleRef:                         
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-- kind: ServiceAccount
-  name: admin-user
-  namespace: kubernetes-dashboard
-EOF
-
-################################################
-## How to access and connect to dashboard     ##
-################################################
-#    Start proxy:
-#        kubectl proxy&
-#    Get UI token:
-#        kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
-
-#    Port forward SSH session so you can access dashboard on a remote server:
-#        ssh -L 9999:127.0.0.1:8001 -N -f -l root kubernetes-master.siomporas.com
-        
-#    Access dashboard, using token from above, from web browser with local port 9999 forwarded:
-#        http://localhost:9999/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/   
+cd /tmp/join-cluster/
+python3 -m http.server $JOIN_CMD_PORT &
 
 ################################################
 ## Configure auto-provisioned NFS storage     ##
@@ -143,8 +108,8 @@ EOF
 kubectl get configmap -n kube-system kube-proxy -o yaml > /tmp/proxy.yaml
 sed -i 's/strictARP: false/strictARP: true/g' /tmp/proxy.yaml
 kubectl replace -f /tmp/proxy.yaml
-kubectl apply -f $METALLB_NAMESPACE_URL
-kubectl apply -f $METALLB_URL
+helm repo add metallb $METALLB_HELM_REPO
+helm install metallb metallb/metallb
 kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey='$(openssl rand -base64 128)'
 
 cat <<EOF | kubectl apply -f -
@@ -162,17 +127,5 @@ data:
       - $START_IP-$END_IP
 EOF
 
-
-################################################
-## Reset everything, clear docker cache       ##
-################################################
-
-mkdir -p /tmp/join-cluster
-kubeadm token create --print-join-command > /tmp/join-cluster/join_kubernetes_cluster.sh
-
-# TODO - this should probably be over SSL and at least use a shared secret to secure it
-
-cd /tmp/join-cluster/
-python3 -m http.server $JOIN_CMD_PORT
 
 # kubeadm reset -f && rm -rf /etc/cni/net.d && rm -f $HOME/.kube/config && docker system prune -a -f

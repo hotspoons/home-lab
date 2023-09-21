@@ -151,10 +151,6 @@ variable helm_version {
     description = "The version of helm you wish to target, e.g. 3.9.0"
 }
 
-variable metallb_version {
-    description = "The version of MetalLB you wish to target, e.g. 0.13.3"
-}
-
 variable compute_nodes {
     description = "Number of compute nodes to create"
     type = number

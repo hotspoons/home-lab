@@ -24,9 +24,8 @@ start_ip                = "192.168.1.206"
 end_ip                  = "192.168.1.246"
 base_arch               = "x86_64"
 aarch                   = "amd64"
-containerd_version      = "1.6.6-3.1.el8"
-helm_version            = "3.9.0"
-metallb_version         = "0.13.3"
+containerd_version      = "1.6.24-3.1.el8"
+helm_version            = "3.12.3"
 compute_nodes           = 1
 pod_network_cidr        = "192.168.0.0/16"
 
