@@ -27,17 +27,19 @@ resource "libvirt_pool" "vm" {
 }
 
 resource "libvirt_volume" "vm-qcow2" {
-  name   = "${var.compute_name}-qcow2"
+  count = var.instance_count
+  name   = "${var.compute_name}-${count.index}-qcow2"
   pool   = libvirt_pool.vm.name
   source = var.image_path
   format = "qcow2"
 }
 
 data "template_file" "user_data" {
+  count = var.instance_count
   template = file("${path.module}/cloud_init.cfg")
   vars = {
     root_password: var.root_password
-    hostname: var.compute_name
+    hostname: "${var.compute_name}-${count.index}"
   }
 }
 
@@ -51,18 +53,20 @@ data "template_file" "network_config" {
 # you can add also meta_data field
 resource "libvirt_cloudinit_disk" "commoninit" {
   name           = "commoninit.iso"
-  user_data      = data.template_file.user_data.rendered
+  count          = var.instance_count
+  user_data      = element(data.template_file.user_data.*.rendered, count.index)
   network_config = data.template_file.network_config.rendered
   pool           = libvirt_pool.vm.name
 }
 
 # Create the machine
 resource "libvirt_domain" "domain-vm" {
+  count  = var.instance_count
   name   = var.compute_name
   memory = var.memory
   vcpu   = var.cpu_cores
 
-  cloudinit = libvirt_cloudinit_disk.commoninit.id
+  cloudinit = element(libvirt_cloudinit_disk.commoninit.*.id, count.index)
 
   network_interface {
     bridge = var.network_bridge
@@ -84,7 +88,7 @@ resource "libvirt_domain" "domain-vm" {
   }
 
   disk {
-    volume_id = libvirt_volume.vm-qcow2.id
+    volume_id = element(libvirt_volume.vm-qcow2.*.id, count.index)
   }
 
   graphics {

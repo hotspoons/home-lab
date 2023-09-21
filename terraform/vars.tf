@@ -23,6 +23,12 @@ variable "compute_name" {
     default = ""
 }
 
+variable "instance_count" {
+    description = "The number of compute instances to spin up, each compute node will have an index added to its name"
+    type = number
+    default = 1
+}
+
 variable "memory" {
     description = "The amount of RAM for the compute node in MB, defaults to 4096"
     type = string
