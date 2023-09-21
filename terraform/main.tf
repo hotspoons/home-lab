@@ -52,7 +52,7 @@ data "template_file" "network_config" {
 # Use CloudInit to add our ssh-key to the instance
 # you can add also meta_data field
 resource "libvirt_cloudinit_disk" "commoninit" {
-  name           = "commoninit.iso"
+  name           = "commoninit-${count.index}.iso"
   count          = var.instance_count
   user_data      = element(data.template_file.user_data.*.rendered, count.index)
   network_config = data.template_file.network_config.rendered
@@ -62,7 +62,7 @@ resource "libvirt_cloudinit_disk" "commoninit" {
 # Create the machine
 resource "libvirt_domain" "domain-vm" {
   count  = var.instance_count
-  name   = var.compute_name
+  name   = "${var.compute_name}-${count.index}"
   memory = var.memory
   vcpu   = var.cpu_cores
 

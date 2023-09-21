@@ -3,11 +3,13 @@
 storage_pool_path       = "/tmp/vms/k8s"
 image_path              = "/media/import/media/Projects/iac/images/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
 remote_host             = "qemu+ssh://file-server.lan"
-compute_name            = "rocky-k8s-host"
+compute_name            = "rocky-k8s-hosts"
+instance_count          = 3
 memory                  = "8192"
 cpu_cores               = 8
 network_bridge          = "ovirtmgmt"
 root_password           = "changeit"
+
 
 # Kubernetes settings
 nfs_server              = "vm-host.siomporas.com"
