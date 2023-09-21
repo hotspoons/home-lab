@@ -9,14 +9,19 @@ memory                  = "8192"
 cpu_cores               = 8
 network_bridge          = "ovirtmgmt"
 root_password           = "changeit"
-
+domain_suffix           = "siomporas.com"
+el_version              = "8"
 
 # Kubernetes settings
+cert_chain              = "/etc/letsencrypt/live/siomporas.com/chain.pem"
+cert_full_chain         = "/etc/letsencrypt/live/siomporas.com/fullchain.pem"
+cert_cert               = "/etc/letsencrypt/live/siomporas.com/cert.pem"
+cert_private_key        = "/etc/letsencrypt/live/siomporas.com/privkey.pem"
 nfs_server              = "vm-host.siomporas.com"
 nfs_path                = "/working/kubernetes-data"
 nfs_provision_name      = "siomporas.com/nfs"
-start_ip                = "192.168.1.220"
-end_ip                  = "192.168.1.225"
+start_ip                = "192.168.1.206"
+end_ip                  = "192.168.1.246"
 base_arch               = "x86_64"
 aarch                   = "amd64"
 containerd_version      = "1.6.6-3.1.el8"

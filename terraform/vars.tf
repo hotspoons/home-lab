@@ -59,6 +59,31 @@ variable "root_password" {
     default = "changeme"
 }
 
+variable "cert_chain" {
+    description = "Certificate chain file"
+    type = string
+    default = ""
+}
+
+variable "cert_full_chain" {
+    description = "Certificate full chain file"
+    type = string
+    default = ""
+}
+
+variable "cert_cert" {
+    description = "Certificate file"
+    type = string
+    default = ""
+}
+
+variable "cert_private_key" {
+    description = "Certificate private key file"
+    type = string
+    default = ""
+}
+
+
 variable "ssh_authorized_keys" {
     description = "A list of ssh authorized keys to be installed on the new VM"
     type = list(string)
@@ -68,7 +93,25 @@ variable "ssh_private_key" {
     description = "An SSH private key corresponding to one of the public keys, used to access the VM"
 }
 
+variable "el_version" {
+    description = "The major enterprise linux version used for the images in this install, defaults to 8"
+    type = string
+    default = "8"
+}
+
 #Kubernetes setup
+
+variable "join_cmd_port" {
+    description = "The port where the Kubernetes join command will be hosted"
+    type = string
+    default = 8000
+}
+
+variable "initialization_commands" {
+    description = "A list of commands to be executed on first start"
+    type = list(string)
+    default = ["echo \"Initializing...\""]
+}
 
 variable "nfs_server" {
     description = "The hostname server to host persistent volumes"

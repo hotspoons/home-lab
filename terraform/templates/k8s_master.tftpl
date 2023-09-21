@@ -1,0 +1,172 @@
+
+
+## NFS Configuration - set NFS server and path for dynamic storage for persistent volumes
+NFS_SERVER=${nfs_server}
+NFS_PATH=${nfs_path}
+NFS_PROVISION_NAME=${nfs_provision_name}
+## IP Address range for load balancer
+START_IP=${start_ip}
+END_IP=${end_ip}
+METALLB_VERSION=${metallb_version}
+POD_NETWORK_CIDR=${pod_network_cidr}
+JOIN_CMD_PORT=${join_cmd_port}
+
+
+#Kubernetes utilities setup for persistent volumes, dashboard, and metal load balancer
+DASHBOARD_URL=https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended.yaml
+NFS_CLIENT_PROVISIONER_CTNR=quay.io/external_storage/nfs-client-provisioner:latest
+METALLB_NAMESPACE_URL=https://raw.githubusercontent.com/metallb/metallb/v$METALLB_VERSION/manifests/namespace.yaml
+METALLB_URL=https://raw.githubusercontent.com/metallb/metallb/v$METALLB_VERSION/manifests/metallb.yaml
+
+################################################
+## Setup firewall rules                       ##
+################################################
+firewall-cmd --zone=public --permanent --add-port={6443,2379,2380,10250,10251,10252}/tcp
+firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=$(hostname -i)/32 accept"
+firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=172.17.0.0/16 accept"
+firewall-cmd --reload
+
+################################################
+## Initialize cluster                         ##
+################################################
+
+kubeadm init --pod-network-cidr $POD_NETWORK_CIDR
+mkdir -p $HOME/.kube
+yes | cp /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl taint nodes --all node-role.kubernetes.io/master-
+kubectl get nodes
+
+
+################################################
+## Setup cluster for admin dashboard          ##
+################################################
+
+kubectl apply -f $DASHBOARD_URL
+
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+EOF
+
+cat <<EOF | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:                         
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+EOF
+
+################################################
+## How to access and connect to dashboard     ##
+################################################
+#    Start proxy:
+#        kubectl proxy&
+#    Get UI token:
+#        kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
+
+#    Port forward SSH session so you can access dashboard on a remote server:
+#        ssh -L 9999:127.0.0.1:8001 -N -f -l root kubernetes-master.siomporas.com
+        
+#    Access dashboard, using token from above, from web browser with local port 9999 forwarded:
+#        http://localhost:9999/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/   
+
+################################################
+## Configure auto-provisioned NFS storage     ##
+################################################
+
+cat <<EOF | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: managed-nfs-storage
+  annotations:
+    storageclass.kubernetes.io/is-default-class: 'true'
+provisioner: $NFS_PROVISION_NAME
+parameters:
+  archiveOnDelete: 'false'
+EOF
+
+cat <<EOF | kubectl apply -f -
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: nfs-client-provisioner
+spec:
+  selector:
+    matchLabels:
+      app: nfs-client-provisioner
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nfs-client-provisioner
+    spec:
+      serviceAccountName: nfs-client-provisioner
+      containers:
+        - name: nfs-client-provisioner
+          image: $NFS_CLIENT_PROVISIONER_CTNR
+          volumeMounts:
+            - name: nfs-client-root
+              mountPath: /persistentvolumes
+          env:
+            - name: PROVISIONER_NAME
+              value: $NFS_PROVISION_NAME
+            - name: NFS_SERVER
+              value: $NFS_SERVER
+            - name: NFS_PATH
+              value: $NFS_PATH
+      volumes:
+        - name: nfs-client-root
+          nfs:
+            server: $NFS_SERVER
+            path: $NFS_PATH
+EOF
+
+################################################
+## Configure Metal Load Balancer              ##
+################################################
+
+kubectl get configmap -n kube-system kube-proxy -o yaml > /tmp/proxy.yaml
+sed -i 's/strictARP: false/strictARP: true/g' /tmp/proxy.yaml
+kubectl replace -f /tmp/proxy.yaml
+kubectl apply -f $METALLB_NAMESPACE_URL
+kubectl apply -f $METALLB_URL
+kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey='$(openssl rand -base64 128)'
+
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+      - $START_IP-$END_IP
+EOF
+
+
+################################################
+## Reset everything, clear docker cache       ##
+################################################
+
+kubeadm token create --print-join-command > /tmp/join_kubernetes_cluster.sh
+
+# kubeadm reset -f && rm -rf /etc/cni/net.d && rm -f $HOME/.kube/config && docker system prune -a -f

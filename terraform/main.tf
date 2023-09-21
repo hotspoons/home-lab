@@ -8,6 +8,51 @@ terraform {
   }
 }
 
+
+#########################
+######Kubernetes#########
+#########################
+
+locals{
+  master_template_install = jsonencode(chomp(templatefile("templates/k8s_master_template.tftpl", {
+    base_arch: var.base_arch,
+    aarch: var.aarch,
+    containerd_version: var.containerd_version,
+    helm_version: var.helm_version,
+    el_version: var.el_version
+  })))
+  worker_template_install = jsonencode(chomp(templatefile("templates/k8s_worker_template.tftpl", {
+    base_arch: var.base_arch,
+    aarch: var.aarch,
+    containerd_version: var.containerd_version,
+    el_version: var.el_version
+  })))
+  master_cluster_config = jsonencode(chomp(templatefile("templates/k8s_master.tftpl", {
+    nfs_server: var.nfs_server,
+    nfs_path: var.nfs_path,
+    nfs_provision_name: var.nfs_provision_name,
+    start_ip: var.start_ip,
+    end_ip: var.end_ip,
+    metallb_version: var.metallb_version,
+    pod_network_cidr: var.pod_network_cidr,
+    join_cmd_port: var.join_cmd_port,
+  })))
+  worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker.tftpl", {
+    master_hostname: "${var.compute_name}-0",
+    join_cmd_port: var.join_cmd_port
+  })))
+  cert = jsonencode(file(var.cert_cert))
+  full_chain = jsonencode(file(var.cert_full_chain))
+  cert_private_key = jsonencode(file(var.cert_private_key))
+}
+
+## TODO apply these lists into yaml-able values to be injected into cloudinit
+
+#########################
+########Compute##########
+#########################
+
+
 # instance the provider
 provider "libvirt" {
   uri = "qemu:///system"
@@ -38,8 +83,14 @@ data "template_file" "user_data" {
   count = var.instance_count
   template = file("${path.module}/cloud_init.cfg")
   vars = {
+    domain: var.domain_suffix
     root_password: var.root_password
     hostname: "${var.compute_name}-${count.index}"
+    full_chain = local.full_chain
+    cert = local.cert
+    cert_private_key = local.cert_private_key
+    install_kubernetes = count.index == 0 ? local.master_template_install : local.worker_template_install
+    cluster_config = count.index == 0 ? local.master_cluster_config : local.worker_cluster_join
   }
 }
 
