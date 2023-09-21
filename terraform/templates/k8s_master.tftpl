@@ -22,7 +22,7 @@ METALLB_URL=https://raw.githubusercontent.com/metallb/metallb/v$METALLB_VERSION/
 ## Setup firewall rules                       ##
 ################################################
 firewall-cmd --zone=public --permanent --add-port={6443,2379,2380,10250,10251,10252}/tcp
-firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=$(hostname -i)/32 accept"
+firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=$(hostname -I)/32 accept"
 firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=172.17.0.0/16 accept"
 firewall-cmd --reload
 
@@ -167,6 +167,12 @@ EOF
 ## Reset everything, clear docker cache       ##
 ################################################
 
-kubeadm token create --print-join-command > /tmp/join_kubernetes_cluster.sh
+mkdir -p /tmp/join-cluster
+kubeadm token create --print-join-command > /tmp/join-cluster/join_kubernetes_cluster.sh
+
+# TODO - this should probably be over SSL and at least use a shared secret to secure it
+
+cd /tmp/join-cluster/
+python3 -m http.server $JOIN_CMD_PORT
 
 # kubeadm reset -f && rm -rf /etc/cni/net.d && rm -f $HOME/.kube/config && docker system prune -a -f

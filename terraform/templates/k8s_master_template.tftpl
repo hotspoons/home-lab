@@ -23,7 +23,7 @@ setenforce 0
 sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
 modprobe br_netfilter
 
-dnf install -y wget git lsof firewalld bash-completion iproute-tc
+dnf install -y wget git lsof firewalld bash-completion iproute-tc python3 python3-pip
 sed -i 's/FirewallBackend=nftables/FirewallBackend=iptables/g' /etc/firewalld/firewalld.conf
 systemctl restart firewalld
 
@@ -34,6 +34,12 @@ cat <<EOF > /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
+
+## Force sending hostname to DHCP server by cycling network and DHCP lease
+systemctl stop NetworkManager.service
+dhclient -r eth0
+systemctl start NetworkManager.service
+dhclient -1 eth0
 
 sysctl --system
 swapoff -a

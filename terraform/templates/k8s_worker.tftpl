@@ -13,7 +13,9 @@ firewall-cmd --reload
 ## Join cluster                               ##
 ################################################
 
-while ! KUBE_JOIN_COMMAND=$(curl https://$MASTER_HOSTNAME:$JOIN_CMD_PORT)
+# TODO - this should probably be over SSL and at least use a shared secret to secure it
+
+while ! KUBE_JOIN_COMMAND=$(curl http://$MASTER_HOSTNAME:$JOIN_CMD_PORT/join_kubernetes_cluster.sh)
 do
     echo "Master join command not available, trying again in 5 seconds"
     sleep 5
