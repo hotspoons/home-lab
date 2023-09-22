@@ -19,7 +19,7 @@ setenforce 0
 sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
 modprobe br_netfilter
 
-dnf install -y wget git lsof firewalld bash-completion iproute-tc  nano
+dnf install -y wget git lsof firewalld bash-completion iproute-tc nano
 sed -i 's/FirewallBackend=nftables/FirewallBackend=iptables/g' /etc/firewalld/firewalld.conf
 systemctl restart firewalld
 
