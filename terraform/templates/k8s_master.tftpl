@@ -9,12 +9,14 @@ START_IP=${start_ip}
 END_IP=${end_ip}
 POD_NETWORK_CIDR=${pod_network_cidr}
 JOIN_CMD_PORT=${join_cmd_port}
+KUBERNETES_VERSION=v1.28.2
 
-
+### A lot of this is based on this article: https://www.linuxtechi.com/install-kubernetes-cluster-on-rocky-linux/
 #Kubernetes utilities setup for persistent volumes, dashboard, and metal load balancer
 DASHBOARD_URL=https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended.yaml
 METALLB_HELM_REPO=https://metallb.github.io/metallb
 NFS_HELM_REPO=https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+CALICO_URL=https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
 
 ################################################
 ## Setup firewall rules                       ##
@@ -28,12 +30,27 @@ firewall-cmd --reload
 ## Initialize cluster                         ##
 ################################################
 
-kubeadm init --pod-network-cidr $POD_NETWORK_CIDR
+## KUBERNETES_VERSION=$(kubectl version -o json | jq '.serverVersion.gitVersion' -r)
+
+cat <<EOF > /tmp/kubeadm-config.yaml
+kind: ClusterConfiguration
+apiVersion: kubeadm.k8s.io/v1beta3
+kubernetesVersion: $KUBERNETES_VERSION
+---
+kind: KubeletConfiguration
+apiVersion: kubelet.config.k8s.io/v1beta1
+cgroupDriver: cgroupfs
+EOF
+
+kubeadm init --config /tmp/kubeadm-config.yaml
 mkdir -p /root/.kube
 yes | cp /etc/kubernetes/admin.conf /root/.kube/config
 chown $(id -u):$(id -g) /root/.kube/config
 export KUBECONFIG=/etc/kubernetes/admin.conf
-kubectl taint nodes --all node-role.kubernetes.io/master-
+kubectl apply -f $CALICO_URL
+systemctl restart containerd.service
+kubectl taint nodes --all node-role.kubernetes.io/master:NoSchedule
+kubectl taint nodes --all node-role.kubernetes.io/master:NoSchedule-
 kubectl get nodes
 
 
