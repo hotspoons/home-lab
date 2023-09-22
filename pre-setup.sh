@@ -6,6 +6,7 @@ export LE_WILDCARD_LAUNCHER=/etc/letsencrypt/wildcard.sh
 export CLOUDFLARE_DNS_UPDATE=/opt/bin/cloudflare-dns.sh
 export CLOUDFLARE_CREDENITALS=/etc/letsencrypt/cloudflare-credentials
 export SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+export INSTANCE_DISK_SIZE=50G
 
 if ! [[ -f "$SCRIPT_DIR/.env" ]]; then
   echo ".env file does not exist. Please copy .env.example to .env, fill in missing values, and try again"
@@ -50,3 +51,7 @@ chmod 600 $CLOUDFLARE_CREDENITALS
 echo "@daily $LE_LAUNCHER" >> /etc/crontab
 echo "@hourly $CLOUDFLARE_DNS_UPDATE" >> /etc/crontab
 
+# Download Rocky linux image and resize it to the value of INSTANCE_DISK_SIZE
+cd /tmp
+wget https://download.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2
+qemu-img resize Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2 $INSTANCE_DISK_SIZE

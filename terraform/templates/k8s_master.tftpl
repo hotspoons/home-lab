@@ -101,5 +101,9 @@ data:
       - $START_IP-$END_IP
 EOF
 
+################################################
+## Bash completion                            ##
+################################################
+kubectl completion bash | sudo tee /etc/bash_completion.d/kubectl > /dev/null
 
 # kubeadm reset -f && rm -rf /etc/cni/net.d && rm -f $HOME/.kube/config && docker system prune -a -f

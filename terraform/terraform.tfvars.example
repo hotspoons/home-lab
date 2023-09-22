@@ -1,7 +1,7 @@
 # VM setup
 
 storage_pool_path       = "/tmp/vms/k8s"
-image_path              = "/media/import/media/Projects/iac/images/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
+image_path              = "/media/import/media/Projects/iac/images/Rocky-8-GenericCloud-LVM-50gb.latest.x86_64.qcow2"
 remote_host             = "qemu+ssh://file-server.lan"
 compute_name            = "rocky-k8s-hosts"
 memory                  = "8192"
@@ -18,7 +18,7 @@ cert_full_chain         = "/etc/letsencrypt/live/siomporas.com/fullchain.pem"
 cert_cert               = "/etc/letsencrypt/live/siomporas.com/cert.pem"
 cert_private_key        = "/etc/letsencrypt/live/siomporas.com/privkey.pem"
 nfs_server              = "vm-host.siomporas.com"
-nfs_path                = "/working/kubernetes-data"
+nfs_path                = "/nfs/exports/kubernetes"
 nfs_provision_name      = "siomporas.com/nfs"
 start_ip                = "192.168.1.206"
 end_ip                  = "192.168.1.246"
@@ -37,7 +37,3 @@ ssh_private_key        = <<EOF
 b3B...b20B
 -----END OPENSSH PRIVATE KEY-----
 EOF
-
-initialization_commands = [
-    "echo \"password\" | passwd --stdin root"
-    ]

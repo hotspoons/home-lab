@@ -29,6 +29,12 @@ variable "instance_count" {
     default = 1
 }
 
+variable "disk_size" {
+    description = "The size in bytes for the qcow2 disk image"
+    type = number
+    default = 10737418240 
+}
+
 variable "memory" {
     description = "The amount of RAM for the compute node in MB, defaults to 4096"
     type = string
@@ -83,7 +89,6 @@ variable "cert_private_key" {
     default = ""
 }
 
-
 variable "ssh_authorized_keys" {
     description = "A list of ssh authorized keys to be installed on the new VM"
     type = list(string)
@@ -107,11 +112,6 @@ variable "join_cmd_port" {
     default = 8000
 }
 
-variable "initialization_commands" {
-    description = "A list of commands to be executed on first start"
-    type = list(string)
-    default = ["echo \"Initializing...\""]
-}
 
 variable "nfs_server" {
     description = "The hostname server to host persistent volumes"
