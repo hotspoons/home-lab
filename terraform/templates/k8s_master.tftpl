@@ -13,12 +13,14 @@ JOIN_CMD_PORT=${join_cmd_port}
 
 #Kubernetes utilities setup for persistent volumes, dashboard, and metal load balancer
 DASHBOARD_URL=https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended.yaml
+METALLB_HELM_REPO=https://metallb.github.io/metallb
+NFS_HELM_REPO=https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
 
 ################################################
 ## Setup firewall rules                       ##
 ################################################
-firewall-cmd --zone=public --permanent --add-port={6443,2379,2380,10250,10251,10252}/tcp
-firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=$(hostname -I)/32 accept"
+firewall-cmd --zone=public --permanent --add-port={6443,2379,2380,10250,10251,10252,$JOIN_CMD_PORT}/tcp
+firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=$(hostname -I |  awk '{print $1}')/32 accept"
 firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=172.17.0.0/16 accept"
 firewall-cmd --reload
 
@@ -27,10 +29,10 @@ firewall-cmd --reload
 ################################################
 
 kubeadm init --pod-network-cidr $POD_NETWORK_CIDR
-mkdir -p $HOME/.kube
-yes | cp /etc/kubernetes/admin.conf $HOME/.kube/config
-chown $(id -u):$(id -g) $HOME/.kube/config
-
+mkdir -p /root/.kube
+yes | cp /etc/kubernetes/admin.conf /root/.kube/config
+chown $(id -u):$(id -g) /root/.kube/config
+export KUBECONFIG=/etc/kubernetes/admin.conf
 kubectl taint nodes --all node-role.kubernetes.io/master-
 kubectl get nodes
 
@@ -50,56 +52,11 @@ python3 -m http.server $JOIN_CMD_PORT &
 ################################################
 ## Configure auto-provisioned NFS storage     ##
 ################################################
+helm repo add nfs-subdir-external-provisioner $NFS_HELM_REPO
+helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+    --set nfs.server=$NFS_SERVER \
+    --set nfs.path=$NFS_PATH
 
-cat <<EOF | kubectl apply -f -
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: managed-nfs-storage
-  annotations:
-    storageclass.kubernetes.io/is-default-class: 'true'
-provisioner: $NFS_PROVISION_NAME
-parameters:
-  archiveOnDelete: 'false'
-EOF
-
-cat <<EOF | kubectl apply -f -
-kind: Deployment
-apiVersion: apps/v1
-metadata:
-  name: nfs-client-provisioner
-spec:
-  selector:
-    matchLabels:
-      app: nfs-client-provisioner
-  replicas: 1
-  strategy:
-    type: Recreate
-  template:
-    metadata:
-      labels:
-        app: nfs-client-provisioner
-    spec:
-      serviceAccountName: nfs-client-provisioner
-      containers:
-        - name: nfs-client-provisioner
-          image: $NFS_CLIENT_PROVISIONER_CTNR
-          volumeMounts:
-            - name: nfs-client-root
-              mountPath: /persistentvolumes
-          env:
-            - name: PROVISIONER_NAME
-              value: $NFS_PROVISION_NAME
-            - name: NFS_SERVER
-              value: $NFS_SERVER
-            - name: NFS_PATH
-              value: $NFS_PATH
-      volumes:
-        - name: nfs-client-root
-          nfs:
-            server: $NFS_SERVER
-            path: $NFS_PATH
-EOF
 
 ################################################
 ## Configure Metal Load Balancer              ##
