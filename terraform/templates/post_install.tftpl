@@ -11,3 +11,7 @@ helm upgrade --install gitlab gitlab/gitlab \
 kubectl get service gitlab-nginx-ingress-controller -o yaml  > /tmp/ingress.yaml
 sed -i 's/externalTrafficPolicy: Local/externalTrafficPolicy: Cluster/g' /tmp/ingress.yaml
 kubectl replace -f /tmp/ingress.yaml
+
+GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode)
+echo $GITLAB_ROOT_PASSWORD
+
