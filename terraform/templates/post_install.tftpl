@@ -1,8 +1,13 @@
 helm repo add gitlab https://charts.gitlab.io/
 helm upgrade --install gitlab gitlab/gitlab \
   --timeout 1800s \
-  --set global.hosts.domain=gitlab.lan.siomporas.com \
+  --set global.hosts.domain=lan.siomporas.com \
   --set global.edition=ce \
-  --set global.hosts.externalIP=192.168.1.222 \
+  --set global.hosts.externalIP=192.168.1.220 \
   --set certmanager-issuer.email=rich@siomporas.com \
   --set postgresql.image.tag=13.6.0
+
+
+kubectl get service gitlab-nginx-ingress-controller -o yaml  > /tmp/ingress.yaml
+sed -i 's/externalTrafficPolicy: Local/externalTrafficPolicy: Cluster/g' /tmp/ingress.yaml
+kubectl replace -f /tmp/ingress.yaml

@@ -52,7 +52,7 @@ chown $(id -u):$(id -g) /root/.kube/config
 export KUBECONFIG=/etc/kubernetes/admin.conf
 kubectl apply -f $CALICO_URL
 systemctl restart containerd.service
-kubectl taint node $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
+#kubectl taint node $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
 kubectl get nodes
 
 
@@ -82,13 +82,13 @@ kubectl replace -f /tmp/proxy.yaml
 kubectl apply -f $KUBE_VIP_URL
 kubectl apply -f $KUBE_VIP_RBAC_URL
 kubectl create configmap -n kube-system kubevip --from-literal range-global=$START_IP-$END_IP
-export VIP=$(VIP_IP)
 export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
 KVVERSION=$(curl -sL https://api.github.com/repos/kube-vip/kube-vip/releases | jq -r ".[0].name")
+shopt -s expand_aliases
 alias kube-vip="ctr image pull ghcr.io/kube-vip/kube-vip:$KVVERSION; ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:$KVVERSION vip /kube-vip"
 kube-vip manifest daemonset \
   --interface $INTERFACE \
-  --address $VIP --inCluster --taint --controlplane \
+  --address $VIP_IP --inCluster --taint --controlplane \
   --services --arp --leaderElection | tee kubevip.yaml
 kubectl apply -f kubevip.yaml
 
