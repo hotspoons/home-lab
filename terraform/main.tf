@@ -14,20 +14,20 @@ terraform {
 #########################
 
 locals{
-  master_template_install = jsonencode(chomp(templatefile("templates/k8s_master_template.tftpl", {
+  master_install = jsonencode(chomp(templatefile("templates/k8s_master_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
     containerd_version: var.containerd_version,
     helm_version: var.helm_version,
     el_version: var.el_version
   })))
-  worker_template_install = jsonencode(chomp(templatefile("templates/k8s_worker_template.tftpl", {
+  worker_install = jsonencode(chomp(templatefile("templates/k8s_worker_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
     containerd_version: var.containerd_version,
     el_version: var.el_version
   })))
-  master_cluster_config = jsonencode(chomp(templatefile("templates/k8s_master.tftpl", {
+  master_cluster_config = jsonencode(chomp(templatefile("templates/k8s_master_configure.tftpl", {
     nfs_server: var.nfs_server,
     nfs_path: var.nfs_path,
     nfs_provision_name: var.nfs_provision_name,
@@ -36,7 +36,7 @@ locals{
     pod_network_cidr: var.pod_network_cidr,
     join_cmd_port: var.join_cmd_port,
   })))
-  worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker.tftpl", {
+  worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",
     join_cmd_port: var.join_cmd_port
   })))
@@ -88,7 +88,7 @@ data "template_file" "user_data" {
     full_chain = local.full_chain
     cert = local.cert
     cert_private_key = local.cert_private_key
-    install_kubernetes = count.index == 0 ? local.master_template_install : local.worker_template_install
+    install_kubernetes = count.index == 0 ? local.master_install : local.worker_install
     cluster_config = count.index == 0 ? local.master_cluster_config : local.worker_cluster_join
     ssh_authorized_keys = jsonencode(var.ssh_authorized_keys)
   }

@@ -29,12 +29,6 @@ variable "instance_count" {
     default = 1
 }
 
-variable "disk_size" {
-    description = "The size in bytes for the qcow2 disk image"
-    type = number
-    default = 10737418240 
-}
-
 variable "memory" {
     description = "The amount of RAM for the compute node in MB, defaults to 4096"
     type = string

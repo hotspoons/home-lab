@@ -10,10 +10,20 @@ HELM_VERSION=${helm_version}
 DOCKER_REPO=https://download.docker.com/linux/centos/docker-ce.repo
 CONTAINER_IO_PKG=https://download.docker.com/linux/centos/$EL_VERSION/$BASE_ARCH/stable/Packages/containerd.io-$CONTAINERD_VERSION.$BASE_ARCH.rpm
 KUBERNETES_REPO=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$BASE_ARCH
+HASHICORP_REPO=https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 KUBERNETES_GPG='https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg'
 HELM_URL=https://get.helm.sh
 HELM_FILE=helm-v$HELM_VERSION-linux-$AARCH.tar.gz
 
+################################################
+## Fix stupidity in default dhclient for EL   ##
+################################################
+
+## Force sending hostname to DHCP server by cycling network and DHCP lease
+systemctl stop NetworkManager.service
+dhclient -r eth0
+systemctl start NetworkManager.service
+dhclient -1 eth0
 
 ################################################
 ## Configure EL8 for networking and tools     ##
@@ -35,11 +45,7 @@ net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
 
-## Force sending hostname to DHCP server by cycling network and DHCP lease
-systemctl stop NetworkManager.service
-dhclient -r eth0
-systemctl start NetworkManager.service
-dhclient -1 eth0
+
 
 sysctl --system
 swapoff -a
@@ -55,6 +61,8 @@ sed -i 's/disabled_plugins = \["cri"\]//g' /etc/containerd/config.toml
 systemctl start docker
 systemctl enable docker
 
+yum-config-manager --add-repo $HASHICORP_REPO
+
 cat <<EOF > /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
@@ -68,7 +76,7 @@ EOF
 
 setenforce 0
 dnf upgrade -y
-dnf install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+dnf install -y terraform vault kubelet kubeadm kubectl --disableexcludes=kubernetes
 systemctl enable kubelet
 systemctl start kubelet
 

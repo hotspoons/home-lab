@@ -20,7 +20,7 @@ mkdir -p /opt/bin
 dnf update -y
 dnf install -y yum-utils docker-ce wget git qemu-kvm virt-manager libvirt virt-install virt-viewer virt-top bridge-utils  bridge-utils virt-top libguestfs-tools
 yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
-dnf install -y terraform 
+dnf install -y terraform vault
 
 wget https://github.com/K0p1-Git/cloudflare-ddns-updater/raw/main/cloudflare-template.sh -O $CLOUDFLARE_DNS_UPDATE
 sed -i "s/auth_email=\"\"/auth_email=\"$AUTH_EMAIL\"/g" $CLOUDFLARE_DNS_UPDATE

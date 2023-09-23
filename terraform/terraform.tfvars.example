@@ -1,7 +1,7 @@
 # VM setup
 
 storage_pool_path       = "/tmp/vms/k8s"
-image_path              = "/media/import/media/Projects/iac/images/Rocky-8-GenericCloud-LVM-50gb.latest.x86_64.qcow2"
+image_path              = "/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
 remote_host             = "qemu+ssh://file-server.lan"
 compute_name            = "rocky-k8s-hosts"
 memory                  = "8192"

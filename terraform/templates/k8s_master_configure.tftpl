@@ -66,13 +66,6 @@ kubeadm token create --print-join-command > /tmp/join-cluster/join_kubernetes_cl
 cd /tmp/join-cluster/
 python3 -m http.server $JOIN_CMD_PORT &
 
-################################################
-## Configure auto-provisioned NFS storage     ##
-################################################
-helm repo add nfs-subdir-external-provisioner $NFS_HELM_REPO
-helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
-    --set nfs.server=$NFS_SERVER \
-    --set nfs.path=$NFS_PATH
 
 
 ################################################
@@ -84,22 +77,37 @@ sed -i 's/strictARP: false/strictARP: true/g' /tmp/proxy.yaml
 kubectl replace -f /tmp/proxy.yaml
 helm repo add metallb $METALLB_HELM_REPO
 helm install metallb metallb/metallb
-kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey='$(openssl rand -base64 128)'
+kubectl create secret generic -n default memberlist --from-literal=secretkey='$(openssl rand -base64 128)'
 
 cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
 metadata:
-  namespace: metallb-system
-  name: config
-data:
-  config: |
-    address-pools:
-    - name: default
-      protocol: layer2
-      addresses:
-      - $START_IP-$END_IP
+  name: first-pool
+  namespace: default
+spec:
+  addresses:
+  - $START_IP-$END_IP
 EOF
+
+
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: default
+  namespace: default
+EOF
+
+################################################
+## Configure auto-provisioned NFS storage     ##
+################################################
+helm repo add nfs-subdir-external-provisioner $NFS_HELM_REPO
+helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+    --set nfs.server=$NFS_SERVER \
+    --set nfs.path=$NFS_PATH \
+    --set persistence.enabled=true \
+    --set storageClass.defaultClass=true 
 
 ################################################
 ## Bash completion                            ##

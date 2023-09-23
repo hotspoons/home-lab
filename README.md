@@ -15,6 +15,7 @@ DHCP host, e.g. `lan.siomporas.com`
     - TODO make this work on ARM, RISC-V
 - Plenty of RAM and disk space
 - Rocky 8 or other 8th generation enterprise Linux freshly installed on host or VM with connectivity to Internet (and bridge to host network if applicable)
+- An NFS server (or use the provided script to configure one on your VM host)
 
 ## libvirt
 I am using `libvirt` with a corresponding Terraform provider to simplify setup and provisioning of virtualized compute
