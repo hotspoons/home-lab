@@ -127,6 +127,10 @@ variable "end_ip" {
     description = "The end of the IP range reserved for the load balancer, should not overlap with DHCP range or used IP addresses"
 }
 
+variable "vip_ip" {
+    description = "The IP address for the load balancer primary VIP, should be outside of IP range above and not already taken"
+}
+
 variable "base_arch" {
     description = "The target architecture for this Kubernetes cluster in kernel format, e.g. x86_64"
     default = "x86_64"

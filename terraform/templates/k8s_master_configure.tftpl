@@ -9,6 +9,7 @@ START_IP=${start_ip}
 END_IP=${end_ip}
 POD_NETWORK_CIDR=${pod_network_cidr}
 JOIN_CMD_PORT=${join_cmd_port}
+VIP_IP=${vip_ip}
 KUBERNETES_VERSION=v1.28.2
 
 ### A lot of this is based on this article: https://www.linuxtechi.com/install-kubernetes-cluster-on-rocky-linux/
@@ -17,11 +18,13 @@ DASHBOARD_URL=https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/
 METALLB_HELM_REPO=https://metallb.github.io/metallb
 NFS_HELM_REPO=https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
 CALICO_URL=https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+KUBE_VIP_URL=https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
+KUBE_VIP_RBAC_URL=https://kube-vip.io/manifests/rbac.yaml
 
 ################################################
 ## Setup firewall rules                       ##
 ################################################
-firewall-cmd --zone=public --permanent --add-port={6443,2379,2380,10250,10251,10252,$JOIN_CMD_PORT}/tcp
+firewall-cmd --zone=public --permanent --add-port={80,443,6443,2379,2380,10250,10251,10252,$JOIN_CMD_PORT}/tcp
 firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=$(hostname -I |  awk '{print $1}')/32 accept"
 firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=172.17.0.0/16 accept"
 firewall-cmd --reload
@@ -49,8 +52,7 @@ chown $(id -u):$(id -g) /root/.kube/config
 export KUBECONFIG=/etc/kubernetes/admin.conf
 kubectl apply -f $CALICO_URL
 systemctl restart containerd.service
-kubectl taint nodes --all node-role.kubernetes.io/master:NoSchedule
-kubectl taint nodes --all node-role.kubernetes.io/master:NoSchedule-
+kubectl taint node $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
 kubectl get nodes
 
 
@@ -69,35 +71,26 @@ python3 -m http.server $JOIN_CMD_PORT &
 
 
 ################################################
-## Configure Metal Load Balancer              ##
+## Configure Kube VIP Load Balancer           ##
 ################################################
+
 
 kubectl get configmap -n kube-system kube-proxy -o yaml > /tmp/proxy.yaml
 sed -i 's/strictARP: false/strictARP: true/g' /tmp/proxy.yaml
 kubectl replace -f /tmp/proxy.yaml
-helm repo add metallb $METALLB_HELM_REPO
-helm install metallb metallb/metallb
-kubectl create secret generic -n default memberlist --from-literal=secretkey='$(openssl rand -base64 128)'
 
-cat <<EOF | kubectl apply -f -
-apiVersion: metallb.io/v1beta1
-kind: IPAddressPool
-metadata:
-  name: first-pool
-  namespace: default
-spec:
-  addresses:
-  - $START_IP-$END_IP
-EOF
-
-
-cat <<EOF | kubectl apply -f -
-apiVersion: metallb.io/v1beta1
-kind: L2Advertisement
-metadata:
-  name: default
-  namespace: default
-EOF
+kubectl apply -f $KUBE_VIP_URL
+kubectl apply -f $KUBE_VIP_RBAC_URL
+kubectl create configmap -n kube-system kubevip --from-literal range-global=$START_IP-$END_IP
+export VIP=$(VIP_IP)
+export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
+KVVERSION=$(curl -sL https://api.github.com/repos/kube-vip/kube-vip/releases | jq -r ".[0].name")
+alias kube-vip="ctr image pull ghcr.io/kube-vip/kube-vip:$KVVERSION; ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:$KVVERSION vip /kube-vip"
+kube-vip manifest daemonset \
+  --interface $INTERFACE \
+  --address $VIP --inCluster --taint --controlplane \
+  --services --arp --leaderElection | tee kubevip.yaml
+kubectl apply -f kubevip.yaml
 
 ################################################
 ## Configure auto-provisioned NFS storage     ##

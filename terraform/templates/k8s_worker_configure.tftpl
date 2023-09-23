@@ -6,7 +6,7 @@ JOIN_CMD_PORT=${join_cmd_port}
 ## Setup firewall rules                       ##
 ################################################
 
-firewall-cmd --zone=public --permanent --add-port={10250,30000-32767}/tcp
+firewall-cmd --zone=public --permanent --add-port={80,443,10250,30000-32767}/tcp
 firewall-cmd --reload
 
 ################################################
