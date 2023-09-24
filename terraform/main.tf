@@ -35,7 +35,8 @@ locals{
     end_ip: var.end_ip,
     pod_network_cidr: var.pod_network_cidr,
     join_cmd_port: var.join_cmd_port,
-    vip_ip: var.vip_ip
+    vip_ip: var.vip_ip,
+    domain: var.domain_suffix
   })))
   worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",

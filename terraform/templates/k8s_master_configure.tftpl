@@ -10,6 +10,7 @@ END_IP=${end_ip}
 POD_NETWORK_CIDR=${pod_network_cidr}
 JOIN_CMD_PORT=${join_cmd_port}
 VIP_IP=${vip_ip}
+DOMAIN=${domain}
 KUBERNETES_VERSION=v1.28.2
 
 ### A lot of this is based on this article: https://www.linuxtechi.com/install-kubernetes-cluster-on-rocky-linux/
@@ -105,6 +106,13 @@ helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs
     --set nfs.path=$NFS_PATH \
     --set persistence.enabled=true \
     --set storageClass.defaultClass=true 
+
+################################################
+## Create TLS secret from certs               ##
+################################################
+
+kubectl create secret tls $DOMAIN-tls --cert=/etc/ssl/$DOMAIN/fullchain.pem --key=/etc/ssl/$DOMAIN/privkey.pem
+echo "Created SSL secret: $DOMAIN-tls"
 
 ################################################
 ## Bash completion                            ##
