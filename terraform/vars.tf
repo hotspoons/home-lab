@@ -59,6 +59,18 @@ variable "root_password" {
     default = "changeme"
 }
 
+variable "cloudflare_global_api_key" {
+    description = "Global API key for my CloudFlare account, used to configure certificate manager"
+    type = string
+    default = ""
+}
+
+variable "cloudflare_email" {
+    description = "E-mail address for my CloudFlare account"
+    type = string
+    default = "nobody@nowhere.com"
+}
+
 variable "cert_chain" {
     description = "Certificate chain file"
     type = string

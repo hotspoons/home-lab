@@ -36,7 +36,9 @@ locals{
     pod_network_cidr: var.pod_network_cidr,
     join_cmd_port: var.join_cmd_port,
     vip_ip: var.vip_ip,
-    domain: var.domain_suffix
+    domain: var.domain_suffix,
+    cloudflare_global_api_key: var.cloudflare_global_api_key,
+    cloudflare_email: var.cloudflare_email
   })))
   worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",

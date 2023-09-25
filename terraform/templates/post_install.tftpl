@@ -4,18 +4,24 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set global.hosts.domain=siomporas.com \
   --set global.edition=ce \
   --set global.hosts.externalIP=192.168.1.220 \
-  --set certmanager-issuer.email=rich@siomporas.com \
-  --set postgresql.image.tag=13.6.0
+  --set certmanager.install=false \
+  --set global.ingress.configureCertmanager=false \
+  --set global.ingress.tls.secretName=siomporas.com-tls \
+  --set postgresql.image.tag=13.6.0 \
+  --set gitlab-runner.install=false
 
 
 kubectl get service gitlab-nginx-ingress-controller -o yaml  > /tmp/ingress.yaml
 sed -i 's/externalTrafficPolicy: Local/externalTrafficPolicy: Cluster/g' /tmp/ingress.yaml
 kubectl replace -f /tmp/ingress.yaml
 
-kubectl patch deployment "gitlab-nginx-ingress-controller" \
-    -n "default" \
-    --type "json" \
-    --patch '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--default-ssl-certificate=siomporas.com-tls"}]'
+cat <<EOF > /tmp/gitlab-runner.yaml
+gitlabUrl: https://gitlab.siomporas.com
+concurrent: 3
+certsSecretName: siomporas.com-tls
+EOF
+
+helm install -f /tmp/gitlab-runner.yaml gitlab-runner gitlab/gitlab-runner
 
 GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode)
 echo $GITLAB_ROOT_PASSWORD

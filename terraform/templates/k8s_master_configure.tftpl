@@ -11,6 +11,8 @@ POD_NETWORK_CIDR=${pod_network_cidr}
 JOIN_CMD_PORT=${join_cmd_port}
 VIP_IP=${vip_ip}
 DOMAIN=${domain}
+CLOUDFLARE_GLOBAL_API_KEY=${cloudflare_global_api_key}
+CLOUDFLARE_EMAIL=${cloudflare_email}
 KUBERNETES_VERSION=v1.28.2
 
 ### A lot of this is based on this article: https://www.linuxtechi.com/install-kubernetes-cluster-on-rocky-linux/
@@ -106,6 +108,67 @@ helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs
     --set nfs.path=$NFS_PATH \
     --set persistence.enabled=true \
     --set storageClass.defaultClass=true 
+
+
+################################################
+## Configure certificate manager via CloudFlare#
+################################################
+
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+helm install \
+  cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --version v1.13.0 \
+  --set installCRDs=true \
+  --set webhook.timeoutSeconds=20
+
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-api-key-secret
+type: Opaque
+stringData:
+  api-key: $CLOUDFLARE_GLOBAL_API_KEY
+EOF
+
+cat << EOF | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: example-issuer
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: $CLOUDFLARE_EMAIL
+    privateKeySecretRef:
+      name: $DOMAIN-ssl-cert
+    solvers:
+    - dns01:
+        cloudflare:
+          email: $CLOUDFLARE_EMAIL
+          apiKeySecretRef:
+            name: cloudflare-api-key-secret
+            key: api-key
+EOF
+
+
+cat << EOF | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-cert
+spec:
+  secretName: wildcard-cert-tls
+  dnsNames:
+  - "*.$DOMAIN"
+  issuerRef:
+    name: $DOMAIN-ssl-cert
+    kind: ClusterIssuer
+EOF
 
 ################################################
 ## Create TLS secret from certs               ##
