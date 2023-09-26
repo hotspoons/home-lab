@@ -110,7 +110,7 @@ data "template_file" "user_data" {
     cert_private_key = local.cert_private_key
     install_kubernetes = count.index == 0 ? local.master_install : local.worker_install
     cluster_config = count.index == 0 ? local.master_cluster_config : local.worker_cluster_join
-    package_install = counts.index == 0 ? local.package_install : "#!/bin/bash\n"
+    package_install = count.index == 0 ? local.package_install : "#!/bin/bash\n"
     ssh_authorized_keys = jsonencode(var.ssh_authorized_keys)
   }
 }

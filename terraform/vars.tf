@@ -169,7 +169,6 @@ variable gitlab_ip {
     type = string
     default = ""
 }
-}
 
 variable workloads_on_control_plane {
     description = "Use control plane as a worker node"
