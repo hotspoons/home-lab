@@ -29,14 +29,14 @@ base_arch               = "x86_64"
 aarch                   = "amd64"
 containerd_version      = "1.6.24-3.1.el8"
 helm_version            = "3.12.3"
-compute_nodes           = 1
-pod_network_cidr        = "192.168.0.0/16"
+gitlab_ip               = "192.168.1.220"
+workloads_on_control_plane = true
+setup_vip_lb            = true
+setup_nfs_provisioner   = true
+setup_tls_secrets       = true
+setup_cert_manager      = false
+setup_gitlab            = false
 
 ssh_authorized_keys     = [
     "ssh-rsa ...= root@vm-host.siomporas.com"
     ]
-ssh_private_key        = <<EOF
------BEGIN OPENSSH PRIVATE KEY-----
-b3B...b20B
------END OPENSSH PRIVATE KEY-----
-EOF

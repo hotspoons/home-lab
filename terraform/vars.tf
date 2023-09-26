@@ -1,6 +1,6 @@
 
 variable "storage_pool_path" {
-    description = "The path for the VM storage pool"
+    description = "The path for the VM storage pool on the host system"
     type = string
     default = "/tmp/vms"
 }
@@ -18,9 +18,8 @@ variable "remote_host" {
 }
 
 variable "compute_name" {
-    description = "A name for these compute nodes, e.g. \"rocky\", \"ubuntu\""
+    description = "A name for these compute nodes, e.g. \"rocky\", \"ubuntu\" - will be used for Kubernetes host names. Required"
     type = string
-    default = ""
 }
 
 variable "instance_count" {
@@ -98,10 +97,7 @@ variable "cert_private_key" {
 variable "ssh_authorized_keys" {
     description = "A list of ssh authorized keys to be installed on the new VM"
     type = list(string)
-}
-
-variable "ssh_private_key" {
-    description = "An SSH private key corresponding to one of the public keys, used to access the VM"
+    default = []
 }
 
 variable "el_version" {
@@ -121,26 +117,32 @@ variable "join_cmd_port" {
 
 variable "nfs_server" {
     description = "The hostname server to host persistent volumes"
+    default = ""
 }
 
 variable "nfs_path" {
     description = "The path on the NFS server where volumes will reside"
+    default = ""
 }
 
 variable "nfs_provision_name" {
     description = "The provisioned name for NFS PV provider"
+    default = ""
 }
 
 variable "start_ip" {
     description = "The beginning of the IP range reserved for the load balancer, should not overlap with DHCP range or used IP addresses"
+    default = ""
 }
 
 variable "end_ip" {
     description = "The end of the IP range reserved for the load balancer, should not overlap with DHCP range or used IP addresses"
+    default = ""
 }
 
 variable "vip_ip" {
     description = "The IP address for the load balancer primary VIP, should be outside of IP range above and not already taken"
+    default = ""
 }
 
 variable "base_arch" {
@@ -159,13 +161,48 @@ variable containerd_version {
 
 variable helm_version {
     description = "The version of helm you wish to target, e.g. 3.9.0"
+    default = "3.12.3"
 }
 
-variable compute_nodes {
-    description = "Number of compute nodes to create"
-    type = number
+variable gitlab_ip {
+    description = "The IP address for the GitLab load balancer to be deployed to, e.g. 192.168.1.2"
+    type = string
+    default = ""
+}
 }
 
-variable pod_network_cidr{
-    description = "The CIDR block for your network, e.g. 192.168.0.0/16"
+variable workloads_on_control_plane {
+    description = "Use control plane as a worker node"
+    type = bool
+    default = false
+}
+
+variable setup_vip_lb {
+    description = "Configure kube-vip load-balancer for self-hosted kubernetes"
+    type = bool
+    default = false
+}
+
+variable setup_nfs_provisioner {
+    description = "Configure NFS provisioner"
+    type = bool
+    default = false
+}
+
+variable setup_tls_secrets {
+    description = "Configure kube-vip load-balancer for self-hosted kubernetes"
+    type = bool
+    default = false
+}
+
+variable setup_cert_manager {
+    description = "Configure kube-vip load-balancer for self-hosted kubernetes"
+    type = bool
+    default = false
+}
+
+variable setup_gitlab {
+    description = "Configure kube-vip load-balancer for self-hosted kubernetes"
+    type = bool
+    default = false
 }

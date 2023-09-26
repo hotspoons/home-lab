@@ -17,7 +17,7 @@ resource "random_uuid" "salt" {
 }
 
 locals{
-  join_cmd_salt = ${random_uuid.salt.result}
+  join_cmd_salt = "${random_uuid.salt.result}"
   master_install = jsonencode(chomp(templatefile("templates/k8s_master_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
@@ -33,30 +33,39 @@ locals{
   })))
   master_cluster_config = jsonencode(chomp(templatefile("templates/k8s_master_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",
-    nfs_server: var.nfs_server,
-    nfs_path: var.nfs_path,
-    nfs_provision_name: var.nfs_provision_name,
-    start_ip: var.start_ip,
-    end_ip: var.end_ip,
-    pod_network_cidr: var.pod_network_cidr,
     join_cmd_port: var.join_cmd_port,
-    vip_ip: var.vip_ip,
     domain: var.domain_suffix,
-    cloudflare_global_api_key: var.cloudflare_global_api_key,
-    cloudflare_email: var.cloudflare_email,
-    join_cmd_salt: local.join_cmd_salt
+    join_cmd_salt: local.join_cmd_salt,
+    workloads_on_control_plane: var.workloads_on_control_plane ? "true" : ""
   })))
   worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",
     join_cmd_port: var.join_cmd_port,
     join_cmd_salt: local.join_cmd_salt
   })))
-  cert = jsonencode(file(var.cert_cert))
-  full_chain = jsonencode(file(var.cert_full_chain))
-  cert_private_key = jsonencode(file(var.cert_private_key))
-}
+  package_install = jsonencode(chomp(templatefile("templates/package_install.tftpl", {
+    nfs_server: var.nfs_server,
+    nfs_path: var.nfs_path,
+    nfs_provision_name: var.nfs_provision_name,
+    start_ip: var.start_ip,
+    end_ip: var.end_ip,
+    master_hostname: "${var.compute_name}-0",
+    domain: var.domain_suffix,
+    vip_ip: var.vip_ip,
+    cloudflare_global_api_key: var.cloudflare_global_api_key,
+    cloudflare_email: var.cloudflare_email,
+    gitlab_ip: var.gitlab_ip,
+    setup_vip_lb: var.setup_vip_lb ? "true" : "",
+    setup_nfs_provisioner: var.setup_nfs_provisioner ? "true" : "",
+    setup_tls_secrets: var.setup_tls_secrets ? "true" : "",
+    setup_cert_manager: var.setup_cert_manager ? "true" : "",
+    setup_gitlab: var.setup_gitlab ? "true" : "",
 
-## TODO apply these lists into yaml-able values to be injected into cloudinit
+  })))
+  cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : ""
+  full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : ""
+  cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : ""
+}
 
 #########################
 ########Compute##########
@@ -101,6 +110,7 @@ data "template_file" "user_data" {
     cert_private_key = local.cert_private_key
     install_kubernetes = count.index == 0 ? local.master_install : local.worker_install
     cluster_config = count.index == 0 ? local.master_cluster_config : local.worker_cluster_join
+    package_install = counts.index == 0 ? local.package_install : "#!/bin/bash\n"
     ssh_authorized_keys = jsonencode(var.ssh_authorized_keys)
   }
 }
@@ -109,10 +119,6 @@ data "template_file" "network_config" {
   template = file("${path.module}/network_config.cfg")
 }
 
-# for more info about paramater check this out
-# https://github.com/dmacvicar/terraform-provider-libvirt/blob/master/website/docs/r/cloudinit.html.markdown
-# Use CloudInit to add our ssh-key to the instance
-# you can add also meta_data field
 resource "libvirt_cloudinit_disk" "commoninit" {
   name           = "commoninit-${count.index}.iso"
   count          = var.instance_count

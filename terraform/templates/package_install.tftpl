@@ -1,0 +1,179 @@
+DOMAIN=${domain}
+CLOUDFLARE_GLOBAL_API_KEY=${cloudflare_global_api_key}
+CLOUDFLARE_EMAIL=${cloudflare_email}
+MASTER_HOSTNAME=${master_hostname}
+## NFS Configuration - set NFS server and path for dynamic storage for persistent volumes
+NFS_SERVER=${nfs_server}
+NFS_PATH=${nfs_path}
+NFS_PROVISION_NAME=${nfs_provision_name}
+## IP Address range for load balancer
+START_IP=${start_ip}
+END_IP=${end_ip}
+VIP_IP=${vip_ip}
+GITLAB_IP=${gitlab_ip}
+SETUP_VIP_LB=${setup_vip_lb}
+SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
+SETUP_TLS_SECRETS=${setup_tls_secrets}
+SETUP_CERT_MANAGER=${setup_cert_manager}
+SETUP_GITLAB=${setup_gitlab}
+
+KUBE_VIP_URL=https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
+KUBE_VIP_RBAC_URL=https://kube-vip.io/manifests/rbac.yaml
+
+### TODO - add flags to enable/disable features in config
+
+################################################
+## Configure Kube VIP Load Balancer           ##
+################################################
+
+if [[ -n "$SETUP_VIP_LB" ]]; then
+
+  kubectl get configmap -n kube-system kube-proxy -o yaml > /tmp/proxy.yaml
+  sed -i 's/strictARP: false/strictARP: true/g' /tmp/proxy.yaml
+  kubectl replace -f /tmp/proxy.yaml
+
+  kubectl apply -f $KUBE_VIP_URL
+  kubectl apply -f $KUBE_VIP_RBAC_URL
+  kubectl create configmap -n kube-system kubevip --from-literal range-global=$START_IP-$END_IP
+  export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
+  KVVERSION=$(curl -sL https://api.github.com/repos/kube-vip/kube-vip/releases | jq -r ".[0].name")
+  shopt -s expand_aliases
+  alias kube-vip="ctr image pull ghcr.io/kube-vip/kube-vip:$KVVERSION; ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:$KVVERSION vip /kube-vip"
+  kube-vip manifest daemonset \
+    --interface $INTERFACE \
+    --address $VIP_IP --inCluster --taint --controlplane \
+    --services --arp --leaderElection | tee kubevip.yaml
+  kubectl apply -f kubevip.yaml
+
+fi
+
+
+################################################
+## Configure auto-provisioned NFS storage     ##
+################################################
+
+if [[ -n "$SETUP_NFS_PROVISIONER" ]]; then
+
+  helm repo add nfs-subdir-external-provisioner $NFS_HELM_REPO
+  helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+      --set nfs.server=$NFS_SERVER \
+      --set nfs.path=$NFS_PATH \
+      --set persistence.enabled=true \
+      --set storageClass.defaultClass=true
+
+fi
+
+################################################
+## Create TLS secret from certs               ##
+################################################
+
+if [[ -n "$SETUP_TLS_SECRETS" ]]; then
+  
+  kubectl create secret tls $DOMAIN-tls --cert=/etc/ssl/$DOMAIN/fullchain.pem --key=/etc/ssl/$DOMAIN/privkey.pem
+  echo "Created SSL secret: $DOMAIN-tls"
+
+fi
+
+
+################################################
+## Configure certificate manager via CloudFlare#
+################################################
+
+
+if [[ -n "$SETUP_CERT_MANAGER" ]]; then
+
+  helm repo add jetstack https://charts.jetstack.io
+  helm repo update
+
+  helm install \
+    cert-manager jetstack/cert-manager \
+    --namespace cert-manager \
+    --create-namespace \
+    --version v1.13.0 \
+    --set installCRDs=true \
+    --set webhook.timeoutSeconds=20
+
+  cat << EOF | kubectl apply -f -
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: cloudflare-api-key-secret
+  type: Opaque
+  stringData:
+    api-key: $CLOUDFLARE_GLOBAL_API_KEY
+  EOF
+
+  cat << EOF | kubectl apply -f -
+  apiVersion: cert-manager.io/v1
+  kind: ClusterIssuer
+  metadata:
+    name: letsencrypt-issuer
+  spec:
+    acme:
+      server: https://acme-v02.api.letsencrypt.org/directory
+      email: $CLOUDFLARE_EMAIL
+      privateKeySecretRef:
+        name: letsencrypt-private-key
+      solvers:
+      - dns01:
+          cloudflare:
+            email: $CLOUDFLARE_EMAIL
+            apiKeySecretRef:
+              name: cloudflare-api-key-secret
+              key: api-key
+  EOF
+
+
+  cat << EOF | kubectl apply -f -
+  apiVersion: cert-manager.io/v1
+  kind: Certificate
+  metadata:
+    name: wildcard-cert
+  spec:
+    secretName: wildcard-cert-tls
+    dnsNames:
+    - "*.$DOMAIN"
+    issuerRef:
+      name: letsencrypt-private-key
+      kind: ClusterIssuer
+  EOF
+
+fi
+
+
+################################################
+## GitLab et al.                               #
+################################################
+
+if [[ -n "$SETUP_GITLAB" ]]; then
+
+  helm upgrade --install gitlab gitlab/gitlab \
+    --timeout 1800s \
+    --set global.hosts.domain=$DOMAIN \
+    --set global.edition=ce \
+    --set global.hosts.externalIP=$GITLAB_IP \
+    --set certmanager.install=false \
+    --set global.ingress.configureCertmanager=false \
+    --set global.ingress.annotations."kubernetes\.io/tls-acme"=true \
+    --set gitlab.webservice.ingress.tls.secretName=gitlab-gitlab-tls \
+    --set registry.ingress.tls.secretName=gitlab-registry-tls \
+    --set minio.ingress.tls.secretName=gitlab-minio-tls \
+    --set gitlab.kas.ingress.tls.secretName=gitlab-kas-tls \
+    --set postgresql.image.tag=13.6.0 \
+    --set gitlab-runner.install=false
+
+
+  kubectl get service gitlab-nginx-ingress-controller -o yaml  > /tmp/ingress.yaml
+  sed -i 's/externalTrafficPolicy: Local/externalTrafficPolicy: Cluster/g' /tmp/ingress.yaml
+  kubectl replace -f /tmp/ingress.yaml
+
+  GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode)
+  echo $GITLAB_ROOT_PASSWORD
+
+fi
+
+
+### debug distroless container example!: 
+## kubectl -n cert-manager debug -it cert-manager-67576f4f5d-gz5l9 --image=migrulos/non-root-tools:1.7  --target=cert-manager-controller -- /bin/bash
+
+

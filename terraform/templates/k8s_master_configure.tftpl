@@ -1,20 +1,8 @@
-
-
-## NFS Configuration - set NFS server and path for dynamic storage for persistent volumes
-NFS_SERVER=${nfs_server}
-NFS_PATH=${nfs_path}
-NFS_PROVISION_NAME=${nfs_provision_name}
-## IP Address range for load balancer
-START_IP=${start_ip}
-END_IP=${end_ip}
-POD_NETWORK_CIDR=${pod_network_cidr}
 MASTER_HOSTNAME=${master_hostname}
 JOIN_CMD_PORT=${join_cmd_port}
 JOIN_CMD_SALT=${join_cmd_salt}
-VIP_IP=${vip_ip}
 DOMAIN=${domain}
-CLOUDFLARE_GLOBAL_API_KEY=${cloudflare_global_api_key}
-CLOUDFLARE_EMAIL=${cloudflare_email}
+WORKLOADS_ON_CONTROL_PLANE=${workloads_on_control_plane}
 KUBERNETES_VERSION=v1.28.2
 
 ### A lot of this is based on this article: https://www.linuxtechi.com/install-kubernetes-cluster-on-rocky-linux/
@@ -23,8 +11,6 @@ DASHBOARD_URL=https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/
 METALLB_HELM_REPO=https://metallb.github.io/metallb
 NFS_HELM_REPO=https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
 CALICO_URL=https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
-KUBE_VIP_URL=https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
-KUBE_VIP_RBAC_URL=https://kube-vip.io/manifests/rbac.yaml
 
 ################################################
 ## Setup firewall rules                       ##
@@ -117,105 +103,6 @@ stringData:
 EOF
 
 echo "Serving join command with salted URL over tls: $CLUSTER_JOIN_URL, also available as Kubernetes secret \"cluster-join-url\""
-
-################################################
-## Configure Kube VIP Load Balancer           ##
-################################################
-
-
-kubectl get configmap -n kube-system kube-proxy -o yaml > /tmp/proxy.yaml
-sed -i 's/strictARP: false/strictARP: true/g' /tmp/proxy.yaml
-kubectl replace -f /tmp/proxy.yaml
-
-kubectl apply -f $KUBE_VIP_URL
-kubectl apply -f $KUBE_VIP_RBAC_URL
-kubectl create configmap -n kube-system kubevip --from-literal range-global=$START_IP-$END_IP
-export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
-KVVERSION=$(curl -sL https://api.github.com/repos/kube-vip/kube-vip/releases | jq -r ".[0].name")
-shopt -s expand_aliases
-alias kube-vip="ctr image pull ghcr.io/kube-vip/kube-vip:$KVVERSION; ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:$KVVERSION vip /kube-vip"
-kube-vip manifest daemonset \
-  --interface $INTERFACE \
-  --address $VIP_IP --inCluster --taint --controlplane \
-  --services --arp --leaderElection | tee kubevip.yaml
-kubectl apply -f kubevip.yaml
-
-################################################
-## Configure auto-provisioned NFS storage     ##
-################################################
-helm repo add nfs-subdir-external-provisioner $NFS_HELM_REPO
-helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
-    --set nfs.server=$NFS_SERVER \
-    --set nfs.path=$NFS_PATH \
-    --set persistence.enabled=true \
-    --set storageClass.defaultClass=true 
-
-################################################
-## Configure certificate manager via CloudFlare#
-################################################
-
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
-
-helm install \
-  cert-manager jetstack/cert-manager \
-  --namespace cert-manager \
-  --create-namespace \
-  --version v1.13.0 \
-  --set installCRDs=true \
-  --set webhook.timeoutSeconds=20
-
-cat << EOF | kubectl apply -f -
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cloudflare-api-key-secret
-type: Opaque
-stringData:
-  api-key: $CLOUDFLARE_GLOBAL_API_KEY
-EOF
-
-cat << EOF | kubectl apply -f -
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: letsencrypt-issuer
-spec:
-  acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: $CLOUDFLARE_EMAIL
-    privateKeySecretRef:
-      name: letsencrypt-private-key
-    solvers:
-    - dns01:
-        cloudflare:
-          email: $CLOUDFLARE_EMAIL
-          apiKeySecretRef:
-            name: cloudflare-api-key-secret
-            key: api-key
-EOF
-
-
-cat << EOF | kubectl apply -f -
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: wildcard-cert
-spec:
-  secretName: wildcard-cert-tls
-  dnsNames:
-  - "*.$DOMAIN"
-  issuerRef:
-    name: letsencrypt-private-key
-    kind: ClusterIssuer
-EOF
-
-################################################
-## Create TLS secret from certs               ##
-################################################
-
-kubectl create secret tls $DOMAIN-tls --cert=/etc/ssl/$DOMAIN/fullchain.pem --key=/etc/ssl/$DOMAIN/privkey.pem
-echo "Created SSL secret: $DOMAIN-tls"
 
 ################################################
 ## Bash completion                            ##
