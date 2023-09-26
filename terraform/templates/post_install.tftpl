@@ -19,6 +19,7 @@ cat <<EOF > /tmp/gitlab-runner.yaml
 gitlabUrl: https://gitlab.siomporas.com
 concurrent: 3
 certsSecretName: siomporas.com-tls
+runnerToken: glrt-9cWHsK_m6Ff-X1X5sgr9
 EOF
 
 helm install -f /tmp/gitlab-runner.yaml gitlab-runner gitlab/gitlab-runner
@@ -26,3 +27,23 @@ helm install -f /tmp/gitlab-runner.yaml gitlab-runner gitlab/gitlab-runner
 GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode)
 echo $GITLAB_ROOT_PASSWORD
 
+
+### debug distroless container example!: 
+## kubectl -n cert-manager debug -it cert-manager-67576f4f5d-gz5l9 --image=migrulos/non-root-tools:1.7  --target=cert-manager-controller -- /bin/bash
+
+
+
+helm upgrade --install gitlab gitlab/gitlab \
+  --timeout 1800s \
+  --set global.hosts.domain=siomporas.com \
+  --set global.edition=ce \
+  --set global.hosts.externalIP=192.168.1.220 \
+  --set certmanager.install=false \
+  --set global.ingress.configureCertmanager=false \
+  --set global.ingress.annotations."kubernetes\.io/tls-acme"=true \
+  --set gitlab.webservice.ingress.tls.secretName=gitlab-gitlab-tls \
+  --set registry.ingress.tls.secretName=gitlab-registry-tls \
+  --set minio.ingress.tls.secretName=gitlab-minio-tls \
+  --set gitlab.kas.ingress.tls.secretName=gitlab-kas-tls \
+  --set postgresql.image.tag=13.6.0 \
+  --set gitlab-runner.install=false

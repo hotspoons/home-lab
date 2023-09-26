@@ -8,7 +8,9 @@ NFS_PROVISION_NAME=${nfs_provision_name}
 START_IP=${start_ip}
 END_IP=${end_ip}
 POD_NETWORK_CIDR=${pod_network_cidr}
+MASTER_HOSTNAME=${master_hostname}
 JOIN_CMD_PORT=${join_cmd_port}
+JOIN_CMD_SALT=${join_cmd_salt}
 VIP_IP=${vip_ip}
 DOMAIN=${domain}
 CLOUDFLARE_GLOBAL_API_KEY=${cloudflare_global_api_key}
@@ -63,19 +65,58 @@ systemctl restart containerd.service
 kubectl get nodes
 
 
-################################################
-## Reset everything, clear docker cache       ##
-################################################
+############################################################################
+## Setup secure-ish URL for joining nodes to the cluster, host and store  ##
+############################################################################
 
-mkdir -p /tmp/join-cluster
-kubeadm token create --print-join-command > /tmp/join-cluster/join_kubernetes_cluster.sh
-
-# TODO - this should probably be over SSL and at least use a shared secret to secure it
+mkdir -p /tmp/join-cluster/$JOIN_CMD_SALT
+kubeadm token create --print-join-command > /tmp/join-cluster/$JOIN_CMD_SALT/join_kubernetes_cluster.sh
 
 cd /tmp/join-cluster/
-python3 -m http.server $JOIN_CMD_PORT &
+
+openssl req -new -newkey rsa:4096 -nodes -keyout snakeoil.key -out snakeoil.csr -subj /C=US/ST=State/L=Locality/O=None/OU=None/CN=*.$DOMAIN
+openssl x509 -req -sha256 -days 365 -in snakeoil.csr -signkey snakeoil.key -out snakeoil.pem
 
 
+###
+echo "from http.server import HTTPServer, SimpleHTTPRequestHandler" >> server.py
+echo "from ssl import PROTOCOL_TLS_SERVER, SSLContext" >> server.py
+echo "import io, sys" >> server.py
+
+echo "class DirectoryHandler(SimpleHTTPRequestHandler):" >> server.py
+echo "    def list_directory(self, path):" >> server.py
+echo "        f = io.BytesIO()" >> server.py
+echo '        f.write("<!DOCTYPE html><html><body><h1>nothing to see here...</h1></body></html>".encode())' >> server.py
+echo "        length = f.tell()" >> server.py
+echo "        f.seek(0)" >> server.py
+echo "        self.send_response(200)" >> server.py
+echo "        encoding = sys.getfilesystemencoding()" >> server.py
+echo "        self.send_header('Content-type', 'text/html; charset=%s' % encoding)" >> server.py
+echo "        self.send_header('Content-Length', str(length))" >> server.py
+echo "        self.end_headers()" >> server.py
+echo "        return f" >> server.py
+echo "" >> server.py
+echo "ssl_context = SSLContext(PROTOCOL_TLS_SERVER)" >> server.py
+echo "ssl_context.load_cert_chain('snakeoil.pem', 'snakeoil.key')" >> server.py
+echo "server = HTTPServer(('0.0.0.0', $JOIN_CMD_PORT), DirectoryHandler)" >> server.py
+echo "server.socket = ssl_context.wrap_socket(server.socket, server_side=True)" >> server.py
+echo "server.serve_forever()" >> server.py
+
+python3 server.py &
+
+export CLUSTER_JOIN_URL="https://$MASTER_HOSTNAME:$JOIN_CMD_PORT/$JOIN_CMD_SALT/join_kubernetes_cluster.sh"
+
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-join-url
+type: Opaque
+stringData:
+  url: $CLUSTER_JOIN_URL
+EOF
+
+echo "Serving join command with salted URL over tls: $CLUSTER_JOIN_URL, also available as Kubernetes secret \"cluster-join-url\""
 
 ################################################
 ## Configure Kube VIP Load Balancer           ##
@@ -109,7 +150,6 @@ helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs
     --set persistence.enabled=true \
     --set storageClass.defaultClass=true 
 
-
 ################################################
 ## Configure certificate manager via CloudFlare#
 ################################################
@@ -137,15 +177,15 @@ EOF
 
 cat << EOF | kubectl apply -f -
 apiVersion: cert-manager.io/v1
-kind: Issuer
+kind: ClusterIssuer
 metadata:
-  name: example-issuer
+  name: letsencrypt-issuer
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
     email: $CLOUDFLARE_EMAIL
     privateKeySecretRef:
-      name: $DOMAIN-ssl-cert
+      name: letsencrypt-private-key
     solvers:
     - dns01:
         cloudflare:
@@ -166,7 +206,7 @@ spec:
   dnsNames:
   - "*.$DOMAIN"
   issuerRef:
-    name: $DOMAIN-ssl-cert
+    name: letsencrypt-private-key
     kind: ClusterIssuer
 EOF
 

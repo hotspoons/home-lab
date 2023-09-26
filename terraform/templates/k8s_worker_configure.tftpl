@@ -1,5 +1,6 @@
 MASTER_HOSTNAME=${master_hostname}
 JOIN_CMD_PORT=${join_cmd_port}
+JOIN_CMD_SALT=${join_cmd_salt}
 
 
 ################################################
@@ -17,9 +18,7 @@ systemctl stop firewalld.service
 ## Join cluster                               ##
 ################################################
 
-# TODO - this should probably be over SSL and at least use a shared secret to secure it
-
-while ! KUBE_JOIN_COMMAND=$(curl http://$MASTER_HOSTNAME:$JOIN_CMD_PORT/join_kubernetes_cluster.sh)
+while ! KUBE_JOIN_COMMAND=$(curl http://$MASTER_HOSTNAME:$JOIN_CMD_PORT/$JOIN_CMD_SALT/join_kubernetes_cluster.sh)
 do
     echo "Master join command not available, trying again in 5 seconds"
     sleep 5

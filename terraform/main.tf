@@ -13,7 +13,11 @@ terraform {
 ######Kubernetes#########
 #########################
 
+resource "random_uuid" "salt" {
+}
+
 locals{
+  join_cmd_salt = ${random_uuid.salt.result}
   master_install = jsonencode(chomp(templatefile("templates/k8s_master_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
@@ -28,6 +32,7 @@ locals{
     el_version: var.el_version
   })))
   master_cluster_config = jsonencode(chomp(templatefile("templates/k8s_master_configure.tftpl", {
+    master_hostname: "${var.compute_name}-0",
     nfs_server: var.nfs_server,
     nfs_path: var.nfs_path,
     nfs_provision_name: var.nfs_provision_name,
@@ -38,11 +43,13 @@ locals{
     vip_ip: var.vip_ip,
     domain: var.domain_suffix,
     cloudflare_global_api_key: var.cloudflare_global_api_key,
-    cloudflare_email: var.cloudflare_email
+    cloudflare_email: var.cloudflare_email,
+    join_cmd_salt: local.join_cmd_salt
   })))
   worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",
-    join_cmd_port: var.join_cmd_port
+    join_cmd_port: var.join_cmd_port,
+    join_cmd_salt: local.join_cmd_salt
   })))
   cert = jsonencode(file(var.cert_cert))
   full_chain = jsonencode(file(var.cert_full_chain))
