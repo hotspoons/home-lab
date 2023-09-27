@@ -3,36 +3,167 @@ This is my home lab infrastructure provisioning script, and IaC for setting up b
 is intended to be run on a fresh Rocky 8 host with plenty of RAM and CPU. If attempting to "inception" this in a VM, 
 make sure you have the VM connected to the host's network in full bridged network mode or this won't work.
 
-If this runs correctly, you will have a fully functional Kubernetes cluster with MetalLB and valid SSL certificates
-from LetsEncrypt.
+If this runs correctly, you will have a fully functional Kubernetes cluster with kube-vip cloud provider (ingress) 
+and valid SSL certificates from LetsEncrypt.
+
+Example compute settings are in `terraform/terraform.tfvars.example` `# VM setup` section - copy this file to
+`terraform/terraform.tfvars` and provide your own values as detailed below. Or as in the `tl;dr` section, export
+environment variables with the prefix `TF_VAR_` which will override your `terraform.tfvars` values.
+
+## tl;dr
+```bash
+## On EL8-compatible host with internet connectivity, install required packages as root
+cd /tmp
+export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
+# How large you want each compute node's disk to be
+export INSTANCE_DISK_SIZE=50G
+# Where the base EL8 image for your VMs will reside. This must be LVM, and will be downloaded below
+export TF_VAR_image_path=/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2
+# How many compute nodes for your cluster? You will need CPU, storage and RAM to match
+export TF_VAR_instance_count=5
+# The domain for which you have a TLS certificate and/or CloudFlare DNS configured
+export TF_VAR_domain_suffix=myawesomedomain.com
+# CloudFlare global API key and e-mail for TLS certificate issuer; or provide your own SSL cert instead, see SSL below
+export TF_VAR_cloudflare_global_api_key=0imfnc8mVLWwsAawjYr4Rx-Af50DDqtlx
+export TF_VAR_cloudflare_email=myemailwithcloudflare@gmail.com
+# NFS server IP or hostname and export path you want to use for persistent volumes
+export TF_VAR_nfs_server=192.168.1.202
+export TF_VAR_nfs_path=/nfs/exports/kubernetes
+# The VIP IP, then start and end IP range for the ingress controller IPs, should be out of DHCP range
+export TF_VAR_vip_ip=192.168.1.205
+export TF_VAR_start_ip=192.168.1.206
+export TF_VAR_end_ip=192.168.1.210
+# The IP address you wish to use for GitLab, should be in the range above
+export TF_VAR_gitlab_ip=192.168.1.209
+# Useful things to deploy with your cluster
+export TF_VAR_setup_vip_lb=true
+export TF_VAR_setup_nfs_provisioner=true
+export TF_VAR_setup_tls_secrets=false
+export TF_VAR_setup_cert_manager=true
+export TF_VAR_setup_gitlab=true
+# SSH keys to install on compute nodes
+export TF_VAR_ssh_authorized_keys='["ssh-rsa AAAAB3N....= me@hostname"]'
+
+yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+dnf install -y yum-utils wget git qemu-kvm virt-manager libvirt virt-install virt-viewer virt-top \
+    bridge-utils virt-top libguestfs-tools terraform 
+
+## Setup network bridge, connect it to your primary interface
+nmcli con add ifname br0 type bridge con-name br0
+nmcli con add type bridge-slave ifname $INTERFACE master br0
+
+# then add host bridge to KVM
+echo "<network><name>br0</name><forward mode="bridge"/><bridge name="br0" /></network>" > br0.xml
+virsh net-define br0.xml
+virsh net-start br0
+virsh net-autostart br0
+
+echo "nmcli con down $INTERFACE" >> upbridge.sh
+echo "nmcli con up br0" >> upbridge.sh
+bash upbridge.sh ## Reconnect via ssh if the connection was lost, rerun exports above
+
+## Download Rocky generic cloud image, resize
+wget https://download.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2
+qemu-img resize Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2 $INSTANCE_DISK_SIZE
+git clone https://github.com/hotspoons/home-lab.git
+cd home-lab/terraform
+## Run and apply terraform. This will take
+cp terraform.tfvars.example terraform.tfvars    
+terraform init
+terraform apply -auto-approve
+```
 
 ## Prerequisities
-- A domain, like `siomporas.com`
-- Global auth key from free DNS service with [CloudFlare](https://www.cloudflare.com/plans/free/)
-- A [pi hole](https://pi-hole.net/) or other DNS server that also services DHCP, with a sub-domain configured for
-DHCP host, e.g. `lan.siomporas.com`
+- For valid SSL:
+    - A domain, like `siomporas.com`
+    - Global auth key from free DNS service with [CloudFlare](https://www.cloudflare.com/plans/free/)
+    - Or your own certs and private keys
+- DHCP with host name resolution, e.g. [pi hole](https://pi-hole.net/) so the compute nodes can find each other
 - An AMD or Intel x64-based host with virtualization acceleration enabled, or VM host of same class
-    - TODO make this work on ARM, RISC-V
-- Plenty of RAM and disk space
+- 16GB+ or more RAM and 100GB+ of disk space
 - Rocky 8 or other 8th generation enterprise Linux freshly installed on host or VM with connectivity to Internet (and bridge to host network if applicable)
-- An NFS server (or use the provided script to configure one on your VM host)
+- An NFS server for persistent volumes
 
-## libvirt
+## Virtualization
 I am using `libvirt` with a corresponding Terraform provider to simplify setup and provisioning of virtualized compute
-without a lot of overhead. I had tried this before with OVirt and CloudStack, and both tools got in the way and didn't
+without a lot of overhead. I tried this before with OVirt and CloudStack, and both tools got in the way and didn't
 provide much if any real additional value over controlling the underlying virtualization directly. 
 
-Example compute settings are in `terraform/terraform.tfvars.example` - copy this file to `terraform/terraform.tfvars` 
-and provide your own values.
+An example configuration is as follows:
+```terraform
+storage_pool_path       = "/tmp/vms/k8s"                                        # Where to store the virtual storage
+image_path              = "/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"   # Path to a compatible EL 8 base image
+remote_host             = "qemu+ssh://vmhost"                                   # Remote host URI, if necessary
+compute_name            = "k8s-hosts"                                           # Compute note base names
+memory                  = "8192"                                                # Memory for each compute node
+instance_count          = 4                                                     # Number of compute nodes
+cpu_cores               = 8                                                     # Number of vCPUs for each compute node
+network_bridge          = "br0"                                                 # Bridged network interface on VM host
+root_password           = "changeme"                                            # Root password for compute nodes
+domain_suffix           = "siomporas.com"                                       # The domain suffix for all compute nodes
+el_version              = "8"                                                   # Enterprise Linux version
+```
 
 ## SSL
-TODO
- - Document TLS/DNS certbot setup using CloudFlare DNS. This is a nice and simple way to get a real certificate for
- running local workloads
- - Document how to pass in certificates and private keys to the TF vars
 
-## Kubernetes
-TODO
- - Document Kubernetes setup
+### Provided wildcard certificates
+You can provide your own wildcard SSL certificate, which will be be available in the Kubernetes secret `${domain}-tls` 
+where `${domain}` is the domain associated with the certificate (`domain_suffix` above). Example configuration is as 
+follows (paths on VM host machine):
 
+```terraform    
+cert_full_chain         = "/etc/letsencrypt/live/siomporas.com/fullchain.pem"
+cert_cert               = "/etc/letsencrypt/live/siomporas.com/cert.pem"
+cert_private_key        = "/etc/letsencrypt/live/siomporas.com/privkey.pem"
+setup_tls_secrets       = true
+```
+### cert-manager 
+Alternatively, you can configure `cert-manager` that will issue certificates on demand. To configure `cert-manager`, 
+you will need to have DNS configured for your domain with CloudFlare; provide 
+a [global API key](https://developers.cloudflare.com/fundamentals/api/get-started/keys/); and provide the e-mail 
+address associated with the CloudFlare account.
 
+To configure the deployment to use `cert-manager`
+
+```terraform
+cloudflare_global_api_key = "0imfnc8mVLWwsAawjYr4Rx-Af50DDqtlx"
+cloudflare_email        = "my-cloudflare-email@nowhere.com"
+```
+
+## Kubernetes and more
+The first compute node deployed will be configured as your control plane, and will have all of the tools and configuration
+necessary to manage Kubernetes configured for the root account. This will be accessible from the hostname 
+`${compute_name}-0`. Worker nodes will have serial numbers appended to their hostnames, e.g. `${compute_name}-1`,
+`${compute_name}-2`. 
+
+I've included some add-ons that are required to run more complicated workloads, such as `kube-vip` (ingress controller so 
+you can assign IP addresses to your workloads and access them naturally on your network), `NFS provisioner` for persistent
+volume management, `cert-manager` to automate SSL certificate management with an issuer, and GitLab.
+
+```terraform
+# NFS server and export path
+nfs_server              = "my-nfs-host"
+nfs_path                = "/nfs/exports/kubernetes"
+# IP address for VIP, as well as IP address range for ingress
+vip_ip                  = "192.168.1.205"
+start_ip                = "192.168.1.206"
+end_ip                  = "192.168.1.210"
+# If you want to override the external DNS settings over what the hosts get from DHCP, do it here
+external_dns_ip         = "192.168.1.201"
+external_dns_suffix     = ""
+# An IP address for GitLab, should be between start and end above
+gitlab_ip               = "192.168.1.209"
+# If you want to run workloads on the control plane, set this to true
+workloads_on_control_plane = false
+# Include kube-vip with deployment
+setup_vip_lb            = true
+# Include NFS provisioner with deployment
+setup_nfs_provisioner   = true
+# Include provided SSL certificate as secret `${domain_suffix}-tls` in Kubernetes,
+# requires cert_full_chain, cert_cert, and cert_private_key be provided as well
+setup_tls_secrets       = true
+# Include cert-manager with deployment - requires cloudflare_global_api_key and cloudflare_email be provided as well
+setup_cert_manager      = false
+# Include GitLab CE with deployment - requires either tls_secrets or cert_manager be configured
+setup_gitlab            = false
+```

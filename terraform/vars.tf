@@ -70,11 +70,6 @@ variable "cloudflare_email" {
     default = "nobody@nowhere.com"
 }
 
-variable "cert_chain" {
-    description = "Certificate chain file"
-    type = string
-    default = ""
-}
 
 variable "cert_full_chain" {
     description = "Certificate full chain file"
