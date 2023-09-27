@@ -100,6 +100,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: cloudflare-api-key-secret
+  namespace: cert-manager
 type: Opaque
 stringData:
   api-key: $CLOUDFLARE_GLOBAL_API_KEY
@@ -136,7 +137,7 @@ spec:
   dnsNames:
   - "*.$DOMAIN"
   issuerRef:
-    name: letsencrypt-private-key
+    name: letsencrypt-issuer
     kind: ClusterIssuer
 EOF
 
@@ -149,6 +150,24 @@ fi
 
 if [[ -n "$SETUP_GITLAB" ]]; then
 
+
+cat << EOF | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gitlab-cert
+spec:
+  secretName: gitlab-cert-tls
+  dnsNames:
+  - "gitlab.$DOMAIN"
+  - "registry.$DOMAIN"
+  - "minio.$DOMAIN"
+  - "kas.$DOMAIN"
+  issuerRef:
+    name: letsencrypt-issuer
+    kind: ClusterIssuer
+EOF
+
 helm repo add gitlab https://charts.gitlab.io/
 
 helm upgrade --install gitlab gitlab/gitlab \
@@ -159,10 +178,10 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set certmanager.install=false \
   --set global.ingress.configureCertmanager=false \
   --set global.ingress.annotations."kubernetes\.io/tls-acme"=true \
-  --set gitlab.webservice.ingress.tls.secretName=gitlab-gitlab-tls \
-  --set registry.ingress.tls.secretName=gitlab-registry-tls \
-  --set minio.ingress.tls.secretName=gitlab-minio-tls \
-  --set gitlab.kas.ingress.tls.secretName=gitlab-kas-tls \
+  --set gitlab.webservice.ingress.tls.secretName=gitlab-cert-tls \
+  --set registry.ingress.tls.secretName=gitlab-cert-tls \
+  --set minio.ingress.tls.secretName=gitlab-cert-tls \
+  --set gitlab.kas.ingress.tls.secretName=gitlab-cert-tls \
   --set postgresql.image.tag=13.6.0 \
   --set gitlab-runner.install=false
 

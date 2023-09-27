@@ -3,14 +3,14 @@ JOIN_CMD_PORT=${join_cmd_port}
 JOIN_CMD_SALT=${join_cmd_salt}
 DOMAIN=${domain}
 WORKLOADS_ON_CONTROL_PLANE=${workloads_on_control_plane}
+FORWARD_DNS=192.168.1.201
 KUBERNETES_VERSION=v1.28.2
 
 ### A lot of this is based on this article: https://www.linuxtechi.com/install-kubernetes-cluster-on-rocky-linux/
 #Kubernetes utilities setup for persistent volumes, dashboard, and metal load balancer
 DASHBOARD_URL=https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended.yaml
-METALLB_HELM_REPO=https://metallb.github.io/metallb
-NFS_HELM_REPO=https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
 CALICO_URL=https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+RESOLV_CONF_LOCATION=/etc/k8s-resolv.conf
 
 ################################################
 ## Setup firewall rules                       ##
@@ -23,6 +23,8 @@ firewall-cmd --reload
 ## TODO - Firewall rules prevent kube-vip from operating, need to figure out which ports are needed
 ## for now we just disable to save frustration
 systemctl stop firewalld.service
+
+echo "nameserver $FORWARD_DNS" >> /etc/k8s-resolv.conf
 
 ################################################
 ## Initialize cluster                         ##
@@ -38,6 +40,7 @@ kubernetesVersion: $KUBERNETES_VERSION
 kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
 cgroupDriver: cgroupfs
+resolvConf: $RESOLV_CONF_LOCATION
 EOF
 
 kubeadm init --config /tmp/kubeadm-config.yaml

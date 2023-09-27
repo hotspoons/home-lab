@@ -1,11 +1,17 @@
 MASTER_HOSTNAME=${master_hostname}
 JOIN_CMD_PORT=${join_cmd_port}
 JOIN_CMD_SALT=${join_cmd_salt}
+FORWARD_DNS=192.168.1.201
+
+
+RESOLV_CONF_LOCATION=/etc/k8s-resolv.conf
 
 
 ################################################
 ## Setup firewall rules                       ##
 ################################################
+
+echo "nameserver $FORWARD_DNS" >> /etc/k8s-resolv.conf
 
 firewall-cmd --zone=public --permanent --add-port={80,443,10250,30000-32767}/tcp
 firewall-cmd --reload
