@@ -182,8 +182,7 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set registry.ingress.tls.secretName=gitlab-cert-tls \
   --set minio.ingress.tls.secretName=gitlab-cert-tls \
   --set gitlab.kas.ingress.tls.secretName=gitlab-cert-tls \
-  --set postgresql.image.tag=13.6.0 \
-  --set gitlab-runner.install=false
+  --set postgresql.image.tag=13.6.0 
 
 
 kubectl get service gitlab-nginx-ingress-controller -o yaml  > /tmp/ingress.yaml
