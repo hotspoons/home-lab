@@ -177,11 +177,7 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set global.hosts.externalIP=$GITLAB_IP \
   --set certmanager.install=false \
   --set global.ingress.configureCertmanager=false \
-  --set global.ingress.annotations."kubernetes\.io/tls-acme"=true \
-  --set gitlab.webservice.ingress.tls.secretName=gitlab-cert-tls \
-  --set registry.ingress.tls.secretName=gitlab-cert-tls \
-  --set minio.ingress.tls.secretName=gitlab-cert-tls \
-  --set gitlab.kas.ingress.tls.secretName=gitlab-cert-tls \
+  --set global.ingress.tls.secretName=gitlab-cert-tls \
   --set postgresql.image.tag=13.6.0 
 
 
