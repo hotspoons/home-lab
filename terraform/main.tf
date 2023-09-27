@@ -112,9 +112,9 @@ data "template_file" "user_data" {
     full_chain = local.full_chain
     cert = local.cert
     cert_private_key = local.cert_private_key
-    install_kubernetes = count.index == 0 && var.join_cmd_guid != "" ? local.master_install : local.worker_install
-    cluster_config = count.index == 0 && var.join_cmd_guid != "" ? local.master_cluster_config : local.worker_cluster_join
-    package_install = count.index == 0 && var.join_cmd_guid != "" ? local.package_install : "#!/bin/bash\n"
+    install_kubernetes = count.index == 0 && var.join_cmd_guid == "" ? local.master_install : local.worker_install
+    cluster_config = count.index == 0 && var.join_cmd_guid == "" ? local.master_cluster_config : local.worker_cluster_join
+    package_install = count.index == 0 && var.join_cmd_guid == "" ? local.package_install : "#!/bin/bash\n"
     ssh_authorized_keys = jsonencode(var.ssh_authorized_keys)
   }
 }
