@@ -13,6 +13,7 @@ domain_suffix           = "siomporas.com"
 el_version              = "8"
 
 # Kubernetes settings
+join_cmd_guid           = ""
 cloudflare_global_api_key = ""
 cloudflare_email        = "richietommy@yahoo.com"
 cert_chain              = "/etc/letsencrypt/live/siomporas.com/chain.pem"
@@ -29,6 +30,8 @@ base_arch               = "x86_64"
 aarch                   = "amd64"
 containerd_version      = "1.6.24-3.1.el8"
 helm_version            = "3.12.3"
+external_dns_ip         = "192.168.1.201"
+external_dns_suffix     = ""
 gitlab_ip               = "192.168.1.220"
 workloads_on_control_plane = true
 setup_vip_lb            = true

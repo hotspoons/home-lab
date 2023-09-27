@@ -35,13 +35,17 @@ locals{
     master_hostname: "${var.compute_name}-0",
     join_cmd_port: var.join_cmd_port,
     domain: var.domain_suffix,
-    join_cmd_salt: local.join_cmd_salt,
-    workloads_on_control_plane: var.workloads_on_control_plane ? "true" : ""
+    join_cmd_salt: var.join_cmd_guid != "" ? var.join_cmd_guid : local.join_cmd_salt,
+    workloads_on_control_plane: var.workloads_on_control_plane ? "true" : "",
+    external_dns_ip: var.external_dns_ip,
+    external_dns_suffix: var.external_dns_suffix
   })))
   worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",
     join_cmd_port: var.join_cmd_port,
-    join_cmd_salt: local.join_cmd_salt
+    join_cmd_salt: var.join_cmd_guid != "" ? var.join_cmd_guid : local.join_cmd_salt,
+    external_dns_ip: var.external_dns_ip,
+    external_dns_suffix: var.external_dns_suffix
   })))
   package_install = jsonencode(chomp(templatefile("templates/package_install.tftpl", {
     nfs_server: var.nfs_server,
@@ -108,9 +112,9 @@ data "template_file" "user_data" {
     full_chain = local.full_chain
     cert = local.cert
     cert_private_key = local.cert_private_key
-    install_kubernetes = count.index == 0 ? local.master_install : local.worker_install
-    cluster_config = count.index == 0 ? local.master_cluster_config : local.worker_cluster_join
-    package_install = count.index == 0 ? local.package_install : "#!/bin/bash\n"
+    install_kubernetes = count.index == 0 && var.join_cmd_guid != "" ? local.master_install : local.worker_install
+    cluster_config = count.index == 0 && var.join_cmd_guid != "" ? local.master_cluster_config : local.worker_cluster_join
+    package_install = count.index == 0 && var.join_cmd_guid != "" ? local.package_install : "#!/bin/bash\n"
     ssh_authorized_keys = jsonencode(var.ssh_authorized_keys)
   }
 }

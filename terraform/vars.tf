@@ -111,9 +111,14 @@ variable "el_version" {
 variable "join_cmd_port" {
     description = "The port where the Kubernetes join command will be hosted"
     type = string
-    default = 8000
+    default = "8000"
 }
 
+variable "join_cmd_guid" {
+    description = "If joining nodes to an existing cluster, provide the join commmand GUID here; this will disable deploying a control plane as well"
+    type = string
+    default = ""
+}
 
 variable "nfs_server" {
     description = "The hostname server to host persistent volumes"
@@ -162,6 +167,18 @@ variable containerd_version {
 variable helm_version {
     description = "The version of helm you wish to target, e.g. 3.9.0"
     default = "3.12.3"
+}
+
+variable external_dns_ip {
+    description = "The IP address for external DNS service. If provided, this will overwrite the DNS auto-configured for the VMs"
+    type = string
+    default = ""   
+}
+
+variable external_dns_suffix {
+    description = "Search sufix for external DNS service. If the external DNS IP is provided, this value will be used, otherwise it will be ignored"
+    type = string
+    default = ""   
 }
 
 variable gitlab_ip {

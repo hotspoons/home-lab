@@ -3,7 +3,9 @@ JOIN_CMD_PORT=${join_cmd_port}
 JOIN_CMD_SALT=${join_cmd_salt}
 DOMAIN=${domain}
 WORKLOADS_ON_CONTROL_PLANE=${workloads_on_control_plane}
-FORWARD_DNS=192.168.1.201
+EXTERNAL_DNS_IP=${external_dns_ip}
+EXTERNAL_DNS_SUFFIX=${external_dns_suffix}
+
 KUBERNETES_VERSION=v1.28.2
 
 ### A lot of this is based on this article: https://www.linuxtechi.com/install-kubernetes-cluster-on-rocky-linux/
@@ -13,8 +15,18 @@ CALICO_URL=https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manife
 RESOLV_CONF_LOCATION=/etc/k8s-resolv.conf
 
 ################################################
-## Setup firewall rules                       ##
+## Setup firewall rules, DNS                  ##
 ################################################
+
+if [[ -n "$EXTERNAL_DNS_IP" ]]; then
+    if [[ -n "$EXTERNAL_DNS_SUFFIX" ]]; then
+        echo "search $EXTERNAL_DNS_SUFFIX" >> $RESOLV_CONF_LOCATION
+    fi
+    echo "nameserver $EXTERNAL_DNS_IP" >> $RESOLV_CONF_LOCATION
+else
+    cp /etc/resolv.conf $RESOLV_CONF_LOCATION
+fi
+
 firewall-cmd --zone=public --permanent --add-port={80,443,6443,2379,2380,10250,10251,10252,$JOIN_CMD_PORT}/tcp
 firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=$(hostname -I |  awk '{print $1}')/32 accept"
 firewall-cmd --zone=public --permanent --add-rich-rule "rule family=ipv4 source address=172.17.0.0/16 accept"
@@ -24,7 +36,6 @@ firewall-cmd --reload
 ## for now we just disable to save frustration
 systemctl stop firewalld.service
 
-echo "nameserver $FORWARD_DNS" >> /etc/k8s-resolv.conf
 
 ################################################
 ## Initialize cluster                         ##
@@ -50,7 +61,13 @@ chown $(id -u):$(id -g) /root/.kube/config
 export KUBECONFIG=/etc/kubernetes/admin.conf
 kubectl apply -f $CALICO_URL
 systemctl restart containerd.service
-#kubectl taint node $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
+
+if [[ -n "$WORKLOADS_ON_CONTROL_PLANE" ]]; then
+
+  kubectl taint node $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
+
+fi
+
 kubectl get nodes
 
 
