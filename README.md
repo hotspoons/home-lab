@@ -6,7 +6,7 @@ make sure you have the VM connected to the host's network in full bridged networ
 If this runs correctly, you will have a fully functional Kubernetes cluster with kube-vip cloud provider (ingress) 
 and valid SSL certificates from LetsEncrypt.
 
-Example compute settings are in `terraform/terraform.tfvars.example` `# VM setup` section - copy this file to
+Example settings are in `terraform/terraform.tfvars.example` `# VM setup` section - copy this file to
 `terraform/terraform.tfvars` and provide your own values as detailed below. Or as in the `tl;dr` section, export
 environment variables with the prefix `TF_VAR_` which will override your `terraform.tfvars` values.
 
@@ -53,7 +53,7 @@ nmcli con add ifname br0 type bridge con-name br0
 nmcli con add type bridge-slave ifname $INTERFACE master br0
 
 # then add host bridge to KVM
-echo "<network><name>br0</name><forward mode="bridge"/><bridge name="br0" /></network>" > br0.xml
+echo "<network><name>br0</name><forward mode=\"bridge\"/><bridge name=\"br0\" /></network>" > br0.xml
 virsh net-define br0.xml
 virsh net-start br0
 virsh net-autostart br0
@@ -67,7 +67,9 @@ wget https://download.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCl
 qemu-img resize Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2 $INSTANCE_DISK_SIZE
 git clone https://github.com/hotspoons/home-lab.git
 cd home-lab/terraform
-## Run and apply terraform. This will take
+
+## Run and apply terraform. This will take several minutes (15 minutes until I have a cluster, 20 minutes 
+## to fully stood up on an old HP Proliant DL360p G8 with SSDs)
 cp terraform.tfvars.example terraform.tfvars    
 terraform init
 terraform apply -auto-approve
@@ -167,3 +169,29 @@ setup_cert_manager      = false
 # Include GitLab CE with deployment - requires either tls_secrets or cert_manager be configured
 setup_gitlab            = false
 ```
+
+
+## Monitoring progress
+
+You should be able to log into the control plane node on `${compute_name}-0` via SSH as root with the password you
+provided shortly after the cloudinit script starts running. Once you are logged in, run 
+`tail -f /var/log/cloud-init-output.log` to watch the install process go. There will be a python webserver running
+on the control plane node (port 8000 default) with SSH that serves the join command to the worker nodes in a 
+secure-ish manner; once the worker nodes are joined to the cluster, terminate the python process or reboot the
+node.
+
+## Joining additional nodes
+
+If you wish to join additional nodes in the future, you will need to either do it manually, or launch the 
+python script via `cd /tmp/join-cluster && python3 server.py` and use the autojoining functionality built
+into the cloudinit script.
+
+To join the new compute node(s) to the cluster, get the GUID from the URL stored here:
+```bash
+GUID=$(kubectl get secret cluster-join-guid -o jsonpath='{.data.guid}'  | base64 --decode)
+echo $GUID
+```
+And set the `join_cmd_guid` value in `terraform.tfvars` to that value. Also be sure to use a different value
+for `compute_name` so you won't have hostname collisions. When the `join_cmd_guid` value is present, the
+Terraform won't attempt to deploy a control plane, so all nodes will be worker nodes joined to the 
+original cluster.

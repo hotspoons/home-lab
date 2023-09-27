@@ -122,6 +122,16 @@ stringData:
   url: $CLUSTER_JOIN_URL
 EOF
 
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-join-guid
+type: Opaque
+stringData:
+  guid: $JOIN_CMD_SALT
+EOF
+
 echo "Serving join command with salted URL over tls: $CLUSTER_JOIN_URL, also available as Kubernetes secret \"cluster-join-url\""
 
 ################################################
