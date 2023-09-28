@@ -66,9 +66,9 @@ locals{
     setup_gitlab: var.setup_gitlab ? "true" : "",
 
   })))
-  cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : ""
-  full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : ""
-  cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : ""
+  cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
+  full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")
+  cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : jsonencode("")
 }
 
 #########################

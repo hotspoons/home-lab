@@ -96,7 +96,7 @@ An example configuration is as follows:
 storage_pool_path       = "/tmp/vms/k8s"                                        # Where to store the virtual storage
 image_path              = "/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"   # Path to a compatible EL 8 base image
 remote_host             = "qemu+ssh://vmhost"                                   # Remote host URI, if necessary
-compute_name            = "k8s-hosts"                                           # Compute note base names
+compute_name            = "k8s-hosts"                                           # Compute node base names
 memory                  = "8192"                                                # Memory for each compute node
 instance_count          = 4                                                     # Number of compute nodes
 cpu_cores               = 8                                                     # Number of vCPUs for each compute node
@@ -176,7 +176,7 @@ setup_gitlab            = false
 You should be able to log into the control plane node on `${compute_name}-0` via SSH as root with the password you
 provided shortly after the cloudinit script starts running. Once you are logged in, run 
 `tail -f /var/log/cloud-init-output.log` to watch the install process go. There will be a python webserver running
-on the control plane node (port 8000 default) with SSH that serves the join command to the worker nodes in a 
+on the control plane node (port 8000 default) with SSL that serves the join command to the worker nodes in a 
 secure-ish manner; once the worker nodes are joined to the cluster, terminate the python process or reboot the
 node.
 
