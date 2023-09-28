@@ -1,6 +1,7 @@
 MASTER_HOSTNAME=${master_hostname}
 JOIN_CMD_PORT=${join_cmd_port}
 JOIN_CMD_SALT=${join_cmd_salt}
+JOIN_CMD_URL=${join_cmd_url}
 EXTERNAL_DNS_IP=${external_dns_ip}
 EXTERNAL_DNS_SUFFIX=${external_dns_suffix}
 
@@ -30,8 +31,11 @@ systemctl stop firewalld.service
 ################################################
 ## Join cluster                               ##
 ################################################
-
-while ! KUBE_JOIN_COMMAND=$(curl -k https://$MASTER_HOSTNAME:$JOIN_CMD_PORT/$JOIN_CMD_SALT/join_kubernetes_cluster.sh)
+URL="https://$MASTER_HOSTNAME:$JOIN_CMD_PORT/$JOIN_CMD_SALT/join_kubernetes_cluster.sh"
+if [[ -n "$JOIN_CMD_URL" ]]; then
+    URL="$JOIN_CMD_URL"
+fi
+while ! KUBE_JOIN_COMMAND=$(curl -k $URL)
 do
     echo "Master join command not available, trying again in 5 seconds"
     sleep 5

@@ -109,7 +109,7 @@ variable "join_cmd_port" {
     default = "8000"
 }
 
-variable "join_cmd_guid" {
+variable "join_cmd_url" {
     description = "If joining nodes to an existing cluster, provide the join commmand GUID here; this will disable deploying a control plane as well"
     type = string
     default = ""
@@ -128,6 +128,18 @@ variable "nfs_path" {
 variable "nfs_provision_name" {
     description = "The provisioned name for NFS PV provider"
     default = ""
+}
+
+variable "pi_hole_server" {
+    description = "An IP or hostname for your Pi-hole (for external DNS service)"
+    default = ""
+    type = string
+}
+
+variable "pi_hole_password" {
+    description = "The password for your Pi-hole"
+    default = ""
+    type = string
 }
 
 variable "start_ip" {
@@ -214,6 +226,12 @@ variable setup_cert_manager {
 
 variable setup_gitlab {
     description = "Configure kube-vip load-balancer for self-hosted kubernetes"
+    type = bool
+    default = false
+}
+
+variable setup_pihole_dns {
+    description = "Configure external DNS with a Pi-hole. Requires pi_hole_server and pi_hole_password be provided"
     type = bool
     default = false
 }

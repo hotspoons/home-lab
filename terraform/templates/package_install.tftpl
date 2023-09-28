@@ -6,6 +6,8 @@ MASTER_HOSTNAME=${master_hostname}
 NFS_SERVER=${nfs_server}
 NFS_PATH=${nfs_path}
 NFS_PROVISION_NAME=${nfs_provision_name}
+PI_HOLE_SERVER=${pi_hole_server}
+PI_HOLE_PASSWORD=${pi_hole_password}
 ## IP Address range for load balancer
 START_IP=${start_ip}
 END_IP=${end_ip}
@@ -16,6 +18,7 @@ SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
 SETUP_TLS_SECRETS=${setup_tls_secrets}
 SETUP_CERT_MANAGER=${setup_cert_manager}
 SETUP_GITLAB=${setup_gitlab}
+SETUP_PIHOLE_DNS=${setup_pihole_dns}
 
 KUBE_VIP_URL=https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
 KUBE_VIP_RBAC_URL=https://kube-vip.io/manifests/rbac.yaml
@@ -49,7 +52,6 @@ kubectl apply -f kubevip.yaml
 
 fi
 
-
 ################################################
 ## Configure auto-provisioned NFS storage     ##
 ################################################
@@ -76,11 +78,9 @@ echo "Created SSL secret: $DOMAIN-tls"
 
 fi
 
-
 ################################################
 ## Configure certificate manager via CloudFlare#
 ################################################
-
 
 if [[ -n "$SETUP_CERT_MANAGER" ]]; then
 
@@ -143,6 +143,85 @@ EOF
 
 fi
 
+################################################
+## Pi-hole external DNS                        #
+################################################
+
+if[[ -n "$SETUP_PIHOLE_DNS" ]]; then
+
+kubectl create secret generic pihole-password \
+  --from-literal EXTERNAL_DNS_PIHOLE_PASSWORD="$PI_HOLE_PASSWORD"
+
+cat << EOF | kubectl apply -f -
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-dns
+rules:
+- apiGroups: [""]
+  resources: ["services","endpoints","pods"]
+  verbs: ["get","watch","list"]
+- apiGroups: ["extensions","networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get","watch","list"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["list","watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-dns-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-dns
+subjects:
+- kind: ServiceAccount
+  name: external-dns
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: external-dns
+  template:
+    metadata:
+      labels:
+        app: external-dns
+    spec:
+      serviceAccountName: external-dns
+      containers:
+      - name: external-dns
+        image: registry.k8s.io/external-dns/external-dns:v0.13.5
+        envFrom:
+        - secretRef:
+            name: pihole-password
+        args:
+        - --source=service
+        - --source=ingress
+        - --registry=noop
+        - --policy=upsert-only
+        - --provider=pihole
+        - --pihole-tls-skip-verify
+        - --pihole-server=http://$PI_HOLE_SERVER
+      securityContext:
+        fsGroup: 65534 # For ExternalDNS to be able to read Kubernetes token files
+EOF
+
+fi
 
 ################################################
 ## GitLab et al.                               #
@@ -168,6 +247,15 @@ spec:
     kind: ClusterIssuer
 EOF
 
+cat << EOF | kubectl apply -f -
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: pd-gitlab
+provisioner: k8s-sigs.io/nfs-subdir-external-provisioner
+reclaimPolicy: Retain
+EOF
+
 helm repo add gitlab https://charts.gitlab.io/
 
 helm upgrade --install gitlab gitlab/gitlab \
@@ -178,7 +266,15 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set certmanager.install=false \
   --set global.ingress.configureCertmanager=false \
   --set global.ingress.tls.secretName=gitlab-cert-tls \
-  --set postgresql.image.tag=13.6.0 
+  --set postgresql.image.tag=13.6.0 \
+  --set gitlab.gitaly.persistence.size=50Gi \
+  --set gitlab.gitaly.persistence.storageClass=pd-gitlab \
+  --set postgresql.persistence.size=8Gi \
+  --set postgresql.persistence.storageClass=pd-gitlab \
+  --set minio.persistence.size=10Gi \
+  --set minio.persistence.storageClass=pd-gitlab \
+  --set redis.persistence.size=5Gi \
+  --set redis.persistence.storageClass=pd-gitlab 
 
 
 kubectl get service gitlab-nginx-ingress-controller -o yaml  > /tmp/ingress.yaml

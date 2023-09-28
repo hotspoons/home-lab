@@ -13,7 +13,7 @@ domain_suffix           = "siomporas.com"
 el_version              = "8"
 
 # Kubernetes settings
-join_cmd_guid           = ""
+join_cmd_url           = ""
 cloudflare_global_api_key = ""
 cloudflare_email        = "richietommy@yahoo.com"
 cert_full_chain         = "/etc/letsencrypt/live/siomporas.com/fullchain.pem"
@@ -22,6 +22,8 @@ cert_private_key        = "/etc/letsencrypt/live/siomporas.com/privkey.pem"
 nfs_server              = "vm-host.siomporas.com"
 nfs_path                = "/nfs/exports/kubernetes"
 nfs_provision_name      = "siomporas.com/nfs"
+pi_hole_server          = "pi.hole"
+pi_hole_password        = "changme"
 start_ip                = "192.168.1.207"
 end_ip                  = "192.168.1.246"
 vip_ip                  = "192.168.1.206"
@@ -38,6 +40,7 @@ setup_nfs_provisioner   = true
 setup_tls_secrets       = true
 setup_cert_manager      = false
 setup_gitlab            = false
+setup_pihole_dns        = true
 
 ssh_authorized_keys     = [
     "ssh-rsa ...= root@vm-host.siomporas.com"

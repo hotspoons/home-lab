@@ -4,7 +4,7 @@ is intended to be run on a fresh Rocky 8 host with plenty of RAM and CPU. If att
 make sure you have the VM connected to the host's network in full bridged network mode or this won't work.
 
 If this runs correctly, you will have a fully functional Kubernetes cluster with kube-vip cloud provider (ingress) 
-and valid SSL certificates from LetsEncrypt.
+and valid SSL certificates from LetsEncrypt, and even DNS via a Pi-hole!
 
 Example settings are in `terraform/terraform.tfvars.example` `# VM setup` section - copy this file to
 `terraform/terraform.tfvars` and provide your own values as detailed below. Or as in the `tl;dr` section, export
@@ -29,6 +29,9 @@ export TF_VAR_cloudflare_email=myemailwithcloudflare@gmail.com
 # NFS server IP or hostname and export path you want to use for persistent volumes
 export TF_VAR_nfs_server=192.168.1.202
 export TF_VAR_nfs_path=/nfs/exports/kubernetes
+# Configure External DNS to use your Pi-hole by providing its hostname or IP and password
+export TF_VAR_pi_hole_server=pi.hole
+export TF_VAR_pi_hole_password="changeme"
 # The VIP IP, then start and end IP range for the ingress controller IPs, should be out of DHCP range
 export TF_VAR_vip_ip=192.168.1.205
 export TF_VAR_start_ip=192.168.1.206
@@ -41,6 +44,7 @@ export TF_VAR_setup_nfs_provisioner=true
 export TF_VAR_setup_tls_secrets=false
 export TF_VAR_setup_cert_manager=true
 export TF_VAR_setup_gitlab=true
+export TF_VAR_setup_pihole_dns=true
 # SSH keys to install on compute nodes
 export TF_VAR_ssh_authorized_keys='["ssh-rsa AAAAB3N....= me@hostname"]'
 
@@ -146,6 +150,9 @@ volume management, `cert-manager` to automate SSL certificate management with an
 # NFS server and export path
 nfs_server              = "my-nfs-host"
 nfs_path                = "/nfs/exports/kubernetes"
+# Pi-hole external DNS, so deployments will resolve
+pi_hole_server          = "pi.hole"
+pi_hole_password        = "changeme"
 # IP address for VIP, as well as IP address range for ingress
 vip_ip                  = "192.168.1.205"
 start_ip                = "192.168.1.206"
@@ -168,8 +175,9 @@ setup_tls_secrets       = true
 setup_cert_manager      = false
 # Include GitLab CE with deployment - requires either tls_secrets or cert_manager be configured
 setup_gitlab            = false
+# Include Pi-hole external DNS with deployment - requires pi_hole_server and pi_hole_password be provided
+setup_pihole_dns        = true
 ```
-
 
 ## Monitoring progress
 
@@ -186,12 +194,12 @@ If you wish to join additional nodes in the future, you will need to either do i
 python script via `cd /tmp/join-cluster && python3 server.py` and use the autojoining functionality built
 into the cloudinit script.
 
-To join the new compute node(s) to the cluster, get the GUID from the URL stored here:
+To join the new compute node(s) to the cluster, get the URL stored in Kubernetes as a secret:
 ```bash
-GUID=$(kubectl get secret cluster-join-guid -o jsonpath='{.data.guid}'  | base64 --decode)
-echo $GUID
+URL=$(kubectl get secret cluster-join-url -o jsonpath='{.data.url}'  | base64 --decode)
+echo $URL
 ```
-And set the `join_cmd_guid` value in `terraform.tfvars` to that value. Also be sure to use a different value
-for `compute_name` so you won't have hostname collisions. When the `join_cmd_guid` value is present, the
+And set the `join_cmd_url` value in `terraform.tfvars` to that value. Also be sure to use a different value
+for `compute_name` so you won't have hostname collisions. When the `join_cmd_url` value is present, the
 Terraform won't attempt to deploy a control plane, so all nodes will be worker nodes joined to the 
 original cluster.

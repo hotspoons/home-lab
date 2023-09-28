@@ -35,7 +35,7 @@ locals{
     master_hostname: "${var.compute_name}-0",
     join_cmd_port: var.join_cmd_port,
     domain: var.domain_suffix,
-    join_cmd_salt: var.join_cmd_guid != "" ? var.join_cmd_guid : local.join_cmd_salt,
+    join_cmd_salt: var.join_cmd_url != "" ? "" : local.join_cmd_salt,
     workloads_on_control_plane: var.workloads_on_control_plane ? "true" : "",
     external_dns_ip: var.external_dns_ip,
     external_dns_suffix: var.external_dns_suffix
@@ -43,7 +43,8 @@ locals{
   worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",
     join_cmd_port: var.join_cmd_port,
-    join_cmd_salt: var.join_cmd_guid != "" ? var.join_cmd_guid : local.join_cmd_salt,
+    join_cmd_salt: var.join_cmd_url != "" ? "" : local.join_cmd_salt,
+    join_cmd_url: var.join_cmd_url,
     external_dns_ip: var.external_dns_ip,
     external_dns_suffix: var.external_dns_suffix
   })))
@@ -59,12 +60,14 @@ locals{
     cloudflare_global_api_key: var.cloudflare_global_api_key,
     cloudflare_email: var.cloudflare_email,
     gitlab_ip: var.gitlab_ip,
+    pi_hole_server: var.pi_hole_server,
+    pi_hole_password: var.pi_hole_password,
     setup_vip_lb: var.setup_vip_lb ? "true" : "",
     setup_nfs_provisioner: var.setup_nfs_provisioner ? "true" : "",
     setup_tls_secrets: var.setup_tls_secrets ? "true" : "",
     setup_cert_manager: var.setup_cert_manager ? "true" : "",
     setup_gitlab: var.setup_gitlab ? "true" : "",
-
+    setup_pihole_dns: var.setup_pihole_dns ? "true" : "",
   })))
   cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
   full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")
@@ -112,9 +115,9 @@ data "template_file" "user_data" {
     full_chain = local.full_chain
     cert = local.cert
     cert_private_key = local.cert_private_key
-    install_kubernetes = count.index == 0 && var.join_cmd_guid == "" ? local.master_install : local.worker_install
-    cluster_config = count.index == 0 && var.join_cmd_guid == "" ? local.master_cluster_config : local.worker_cluster_join
-    package_install = count.index == 0 && var.join_cmd_guid == "" ? local.package_install : "#!/bin/bash\n"
+    install_kubernetes = count.index == 0 && var.join_cmd_url == "" ? local.master_install : local.worker_install
+    cluster_config = count.index == 0 && var.join_cmd_url == "" ? local.master_cluster_config : local.worker_cluster_join
+    package_install = count.index == 0 && var.join_cmd_url == "" ? local.package_install : "#!/bin/bash\n"
     ssh_authorized_keys = jsonencode(var.ssh_authorized_keys)
   }
 }
