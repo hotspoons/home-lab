@@ -202,7 +202,8 @@ node.
 
 ## Joining additional nodes
 
-If you wish to join additional nodes in the future, you will need to either do it manually, or:
+If you wish to join additional nodes in the future, you will need to either do it manually, or on a
+configured VM host:
 
 1. Clone a new copy of this repository to a different folder and change to the working folder via 
 `git clone https://github.com/hotspoons/home-lab.git home-lab-new-nodes && cd home-lab-new-nodes`; 
