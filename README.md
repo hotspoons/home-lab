@@ -202,16 +202,16 @@ node.
 
 ## Joining additional nodes
 
-If you wish to join additional nodes in the future, you will need to either do it manually, or launch the 
-python script via `cd /tmp/join-cluster && python3 server.py` and use the autojoining functionality built
-into the cloudinit script.
+If you wish to join additional nodes in the future, you will need to either do it manually, or:
 
-To join the new compute node(s) to the cluster, get the URL stored in Kubernetes as a secret:
+1. Clone a new copy of this repository to a different folder and change to the working folder via 
+`git clone https://github.com/hotspoons/home-lab.git home-lab-new-nodes && cd home-lab-new-nodes`; 
+2. At a minimum configure `compute_name` to a different value than used previously (to avoid hostname 
+collisions) and reuse values for `image_path` and `storage_pool_path`
+3. Set the value for `join_cmd_url` to the following value:
 ```bash
-URL=$(kubectl get secret cluster-join-url -o jsonpath='{.data.url}'  | base64 --decode)
-echo $URL
+URL=$(kubectl get secret cluster-join-url -o jsonpath='{.data.url}' | base64 --decode) && echo $URL
 ```
-And set the `join_cmd_url` value in `terraform.tfvars` to that value. Also be sure to use a different value
-for `compute_name` so you won't have hostname collisions. When the `join_cmd_url` value is present, the
-Terraform won't attempt to deploy a control plane, so all nodes will be worker nodes joined to the 
-original cluster.
+2. Launch the python script on the control plane `${compute_name}-0` to serve the join command by running 
+`cd /tmp/join-cluster && python3 server.py`
+4. Run `cd terraform && terraform init && terraform apply -auto-approve` 
