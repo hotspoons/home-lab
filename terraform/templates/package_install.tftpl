@@ -229,6 +229,7 @@ fi
 
 if [[ -n "$SETUP_GITLAB" ]]; then
 
+if [[ -n "$SETUP_CERT_MANAGER" ]]; then
 
 cat << EOF | kubectl apply -f -
 apiVersion: cert-manager.io/v1
@@ -247,6 +248,14 @@ spec:
     kind: ClusterIssuer
 EOF
 
+  $INGRESS_CERT_ARG="--set global.ingress.tls.secretName=gitlab-cert-tls"
+
+elif [[ -n "$SETUP_TLS_SECRETS" ]]; then
+
+  $INGRESS_CERT_ARG="--set global.ingress.tls.secretName=$DOMAIN-tls"
+
+fi
+
 cat << EOF | kubectl apply -f -
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
@@ -259,24 +268,44 @@ EOF
 
 helm repo add gitlab https://charts.gitlab.io/
 
-helm upgrade --install gitlab gitlab/gitlab \
-  --timeout 1800s \
-  --set global.hosts.domain=$DOMAIN \
-  --set global.edition=ce \
-  --set global.hosts.externalIP=$GITLAB_IP \
-  --set certmanager.install=false \
-  --set global.ingress.configureCertmanager=false \
-  --set global.ingress.tls.secretName=gitlab-cert-tls \
-  --set postgresql.image.tag=13.6.0 \
-  --set gitlab.gitaly.persistence.size=50Gi \
-  --set gitlab.gitaly.persistence.storageClass=pd-gitlab \
-  --set postgresql.persistence.size=8Gi \
-  --set postgresql.persistence.storageClass=pd-gitlab \
-  --set minio.persistence.size=10Gi \
-  --set minio.persistence.storageClass=pd-gitlab \
-  --set redis.persistence.size=5Gi \
-  --set redis.persistence.storageClass=pd-gitlab 
+if [[ -n "$INGRESS_CERT_ARG" ]]; then
 
+  helm upgrade --install gitlab gitlab/gitlab \
+    --timeout 1800s \
+    --set global.hosts.domain=$DOMAIN \
+    --set global.edition=ce \
+    --set global.hosts.externalIP=$GITLAB_IP \
+    --set certmanager.install=false \
+    --set global.ingress.configureCertmanager=false \
+    --set postgresql.image.tag=13.6.0 \
+    --set gitlab.gitaly.persistence.size=50Gi \
+    --set gitlab.gitaly.persistence.storageClass=pd-gitlab \
+    --set postgresql.persistence.size=8Gi \
+    --set postgresql.persistence.storageClass=pd-gitlab \
+    --set minio.persistence.size=10Gi \
+    --set minio.persistence.storageClass=pd-gitlab \
+    --set redis.persistence.size=5Gi \
+    --set redis.persistence.storageClass=pd-gitlab \
+    $INGRESS_CERT_ARG
+
+else
+
+# If we don't have a cert from either CloudFlare or self-provided, use the default self-signed self-managed cert manager instead
+  helm upgrade --install gitlab gitlab/gitlab \
+    --timeout 1800s \
+    --set global.hosts.domain=$DOMAIN \
+    --set global.edition=ce \
+    --set global.hosts.externalIP=$GITLAB_IP \
+    --set postgresql.image.tag=13.6.0 \
+    --set gitlab.gitaly.persistence.size=50Gi \
+    --set gitlab.gitaly.persistence.storageClass=pd-gitlab \
+    --set postgresql.persistence.size=8Gi \
+    --set postgresql.persistence.storageClass=pd-gitlab \
+    --set minio.persistence.size=10Gi \
+    --set minio.persistence.storageClass=pd-gitlab \
+    --set redis.persistence.size=5Gi \
+    --set redis.persistence.storageClass=pd-gitlab 
+fi
 
 kubectl get service gitlab-nginx-ingress-controller -o yaml  > /tmp/ingress.yaml
 sed -i 's/externalTrafficPolicy: Local/externalTrafficPolicy: Cluster/g' /tmp/ingress.yaml
@@ -286,7 +315,6 @@ GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -o
 echo $GITLAB_ROOT_PASSWORD
 
 fi
-
 
 ### debug distroless container example!: 
 ## kubectl -n cert-manager debug -it cert-manager-67576f4f5d-gz5l9 --image=migrulos/non-root-tools:1.7  --target=cert-manager-controller -- /bin/bash
