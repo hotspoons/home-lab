@@ -147,7 +147,7 @@ fi
 ## Pi-hole external DNS                        #
 ################################################
 
-if[[ -n "$SETUP_PIHOLE_DNS" ]]; then
+if [[ -n "$SETUP_PIHOLE_DNS" ]]; then
 
 kubectl create secret generic pihole-password \
   --from-literal EXTERNAL_DNS_PIHOLE_PASSWORD="$PI_HOLE_PASSWORD"
@@ -252,8 +252,9 @@ kind: StorageClass
 apiVersion: storage.k8s.io/v1
 metadata:
   name: pd-gitlab
-provisioner: k8s-sigs.io/nfs-subdir-external-provisioner
+provisioner: cluster.local/nfs-subdir-external-provisioner
 reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
 EOF
 
 helm repo add gitlab https://charts.gitlab.io/
