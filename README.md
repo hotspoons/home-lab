@@ -79,6 +79,10 @@ cd home-lab/terraform
 cp terraform.tfvars.example terraform.tfvars    
 terraform init
 terraform apply -auto-approve
+
+## And if you wish to reset everything and start over, run the exports at the top, then:
+#   terraform destroy -auto-approve
+#   terraform apply -auto-approve
 ```
 
 ## Prerequisities
