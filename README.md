@@ -6,8 +6,8 @@ make sure you have the VM connected to the host's network in full bridged networ
 If this runs correctly, you will have a fully functional Kubernetes cluster with kube-vip cloud provider (ingress) 
 and valid SSL certificates from LetsEncrypt, and even DNS via a Pi-hole!
 
-Example settings are in `terraform/terraform.tfvars.example` `# VM setup` section - copy this file to
-`terraform/terraform.tfvars` and provide your own values as detailed below. Or as in the `tl;dr` section, export
+Example settings are in [terraform/terraform.tfvars.example](terraform/terraform.tfvars.example) - copy this file to
+`terraform/terraform.tfvars` and provide your own values as detailed below. Or as in the [tl;dr](#tl-dr) section, export
 environment variables with the prefix `TF_VAR_` which will override your `terraform.tfvars` values.
 
 ## tl;dr
@@ -17,12 +17,14 @@ cd /tmp
 export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
 # How large you want each compute node's disk to be
 export INSTANCE_DISK_SIZE=50G
+# Where to put the storage pool for the VMs
+export TF_VAR_storage_pool_path=/tmp/vms/k8s
 # Where the base EL8 image for your VMs will reside. This must be LVM, and will be downloaded below
 export TF_VAR_image_path=/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2
 # How many compute nodes for your cluster? You will need CPU, storage and RAM to match
 export TF_VAR_instance_count=5
-# The domain for which you have a TLS certificate and/or CloudFlare DNS configured
-export TF_VAR_domain_suffix=myawesomedomain.com
+# The domain for which you have a TLS certificate and/or CloudFlare DNS configured, TLD for all deployments
+export TF_VAR_domain=myawesomedomain.com
 # CloudFlare global API key and e-mail for TLS certificate issuer; or provide your own SSL cert instead, see SSL below
 export TF_VAR_cloudflare_global_api_key=0imfnc8mVLWwsAawjYr4Rx-Af50DDqtlx
 export TF_VAR_cloudflare_email=myemailwithcloudflare@gmail.com
@@ -80,41 +82,47 @@ terraform apply -auto-approve
 ```
 
 ## Prerequisities
-- For valid SSL:
-    - A domain, like `siomporas.com`
-    - Global auth key from free DNS service with [CloudFlare](https://www.cloudflare.com/plans/free/)
-    - Or your own certs and private keys
-- DHCP with host name resolution, e.g. [pi hole](https://pi-hole.net/) so the compute nodes can find each other
+### Required
 - An AMD or Intel x64-based host with virtualization acceleration enabled, or VM host of same class
 - 16GB+ or more RAM and 100GB+ of disk space
 - Rocky 8 or other 8th generation enterprise Linux freshly installed on host or VM with connectivity to Internet (and bridge to host network if applicable)
-- An NFS server for persistent volumes
+- DHCP with host name resolution, e.g. [Pi-hole](https://pi-hole.net/) so the compute nodes can find each other
+- Range of IP addresses that are not provisioned with DHCP
+### Optional
+- For valid SSL:
+    - A domain, like `siomporas.com`
+    - Global auth key from free DNS service with [CloudFlare](https://www.cloudflare.com/plans/free/)
+    - Or your own wildcard cert chain with private keys for this domain 
+- For persistent volumes (and GitLab):
+    - A writable NFS server
+- For external DNS:
+    - A `Pi-hole` running [version 5.9 or newer](https://pi-hole.net/blog/2022/02/12/pi-hole-ftl-v5-14-web-v5-11-and-core-v5-9-released)
 
 ## Virtualization
 I am using `libvirt` with a corresponding Terraform provider to simplify setup and provisioning of virtualized compute
 without a lot of overhead. I tried this before with OVirt and CloudStack, and both tools got in the way and didn't
-provide much if any real additional value over controlling the underlying virtualization directly. 
+provide any real additional value over controlling the underlying virtualization directly for a home lab use case IMO. 
 
 An example configuration is as follows:
 ```terraform
-storage_pool_path       = "/tmp/vms/k8s"                                        # Where to store the virtual storage
-image_path              = "/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"   # Path to a compatible EL 8 base image
-remote_host             = "qemu+ssh://vmhost"                                   # Remote host URI, if necessary
-compute_name            = "k8s-hosts"                                           # Compute node base names
-memory                  = "8192"                                                # Memory for each compute node
-instance_count          = 4                                                     # Number of compute nodes
-cpu_cores               = 8                                                     # Number of vCPUs for each compute node
-network_bridge          = "br0"                                                 # Bridged network interface on VM host
-root_password           = "changeme"                                            # Root password for compute nodes
-domain_suffix           = "siomporas.com"                                       # The domain suffix for all compute nodes
-el_version              = "8"                                                   # Enterprise Linux version
+storage_pool_path = "/tmp/vms/k8s"          # Where to store the virtual storage
+image_path        = "/tmp/Rocky-8-GenericClolatest.x86_64.qcow2"    # Path to a compatible EL 8 base image
+remote_host       = "qemu+ssh://vmhost"     # Remote host URI, if necessary
+compute_name      = "k8s-hosts"             # Compute node base names
+memory            = "8192"                  # Memory for each compute node
+instance_count    = 4                       # Number of compute nodes
+cpu_cores         = 8                       # Number of vCPUs for each compute node
+network_bridge    = "br0"                   # Bridged network interface on VM host
+root_password     = "changeme"              # Root password for compute nodes
+domain            = "siomporas.com"         # The domain suffix for all compute nodes
+el_version        = "8"                     # Enterprise Linux version
 ```
 
 ## SSL
 
 ### Provided wildcard certificates
 You can provide your own wildcard SSL certificate, which will be be available in the Kubernetes secret `${domain}-tls` 
-where `${domain}` is the domain associated with the certificate (`domain_suffix` above). Example configuration is as 
+where `${domain}` is the domain associated with the certificate (`domain` above). Example configuration is as 
 follows (paths on VM host machine):
 
 ```terraform    
@@ -168,7 +176,7 @@ workloads_on_control_plane = false
 setup_vip_lb            = true
 # Include NFS provisioner with deployment
 setup_nfs_provisioner   = true
-# Include provided SSL certificate as secret `${domain_suffix}-tls` in Kubernetes,
+# Include provided SSL certificate as secret `${domain}-tls` in Kubernetes,
 # requires cert_full_chain, cert_cert, and cert_private_key be provided as well
 setup_tls_secrets       = true
 # Include cert-manager with deployment - requires cloudflare_global_api_key and cloudflare_email be provided as well

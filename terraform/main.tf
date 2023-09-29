@@ -34,7 +34,7 @@ locals{
   master_cluster_config = jsonencode(chomp(templatefile("templates/k8s_master_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",
     join_cmd_port: var.join_cmd_port,
-    domain: var.domain_suffix,
+    domain: var.domain,
     join_cmd_salt: var.join_cmd_url != "" ? "" : local.join_cmd_salt,
     workloads_on_control_plane: var.workloads_on_control_plane ? "true" : "",
     external_dns_ip: var.external_dns_ip,
@@ -55,7 +55,7 @@ locals{
     start_ip: var.start_ip,
     end_ip: var.end_ip,
     master_hostname: "${var.compute_name}-0",
-    domain: var.domain_suffix,
+    domain: var.domain,
     vip_ip: var.vip_ip,
     cloudflare_global_api_key: var.cloudflare_global_api_key,
     cloudflare_email: var.cloudflare_email,
@@ -109,7 +109,7 @@ data "template_file" "user_data" {
   count = var.instance_count
   template = file("${path.module}/cloud_init.cfg")
   vars = {
-    domain: var.domain_suffix
+    domain: var.domain
     root_password: var.root_password
     hostname: "${var.compute_name}-${count.index}"
     full_chain = local.full_chain

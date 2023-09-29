@@ -9,7 +9,7 @@ instance_count          = 3
 cpu_cores               = 8
 network_bridge          = "ovirtmgmt"
 root_password           = "changeme"
-domain_suffix           = "siomporas.com"
+domain                  = "siomporas.com"
 el_version              = "8"
 
 # Kubernetes settings

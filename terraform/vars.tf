@@ -46,8 +46,8 @@ variable "network_bridge" {
     default = "br0"
 }
 
-variable "domain_suffix" {
-    description = "A domain suffix for all VMs, starting with the leading . Defaults to empty"
+variable "domain" {
+    description = "A domain that will be used as the top-level domain for all deployments"
     type = string
     default = ""
 }
