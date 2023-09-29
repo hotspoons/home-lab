@@ -7,7 +7,7 @@ If this runs correctly, you will have a fully functional Kubernetes cluster with
 and valid SSL certificates from LetsEncrypt, and even DNS via a Pi-hole!
 
 Example settings are in [terraform/terraform.tfvars.example](terraform/terraform.tfvars.example) - copy this file to
-`terraform/terraform.tfvars` and provide your own values as detailed below. Or as in the [tl;dr](#tl-dr) section, export
+`terraform/terraform.tfvars` and provide your own values as detailed below. Or as in the [tl;dr](#tldr) section, export
 environment variables with the prefix `TF_VAR_` which will override your `terraform.tfvars` values.
 
 ## tl;dr
