@@ -208,10 +208,8 @@ If you wish to join additional nodes in the future, you will need to either do i
 `git clone https://github.com/hotspoons/home-lab.git home-lab-new-nodes && cd home-lab-new-nodes`; 
 2. At a minimum configure `compute_name` to a different value than used previously (to avoid hostname 
 collisions) and reuse values for `image_path` and `storage_pool_path`
-3. Set the value for `join_cmd_url` to the following value:
-```bash
-URL=$(kubectl get secret cluster-join-url -o jsonpath='{.data.url}' | base64 --decode) && echo $URL
-```
-2. Launch the python script on the control plane `${compute_name}-0` to serve the join command by running 
+3. Set the value for `join_cmd_url` to the following value: 
+`URL=$(kubectl get secret cluster-join-url -o jsonpath='{.data.url}' | base64 --decode) && echo $URL`
+4. Launch the python script on the control plane `${compute_name}-0` to serve the join command by running 
 `cd /tmp/join-cluster && python3 server.py`
-4. Run `cd terraform && terraform init && terraform apply -auto-approve` 
+5. Run `cd terraform && terraform init && terraform apply -auto-approve` 
