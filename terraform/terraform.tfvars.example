@@ -41,6 +41,8 @@ setup_tls_secrets       = true
 setup_cert_manager      = false
 setup_gitlab            = false
 setup_pihole_dns        = true
+setup_dev_tools         = true
+setup_wasm              = false
 
 ssh_authorized_keys     = [
     "ssh-rsa ...= root@vm-host.siomporas.com"

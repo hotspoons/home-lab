@@ -235,3 +235,15 @@ variable setup_pihole_dns {
     type = bool
     default = false
 }
+
+variable setup_dev_tools {
+    description = "Install standard Unix dev tools, Rust, and Go on control plane node"
+    type = bool
+    default = false
+}
+
+variable setup_wasm {
+    description = "Build and install WASM shims for containerd, for next-gen workloads. Requires dev tools"
+    type = bool
+    default = false
+}

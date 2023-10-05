@@ -19,14 +19,36 @@ SETUP_TLS_SECRETS=${setup_tls_secrets}
 SETUP_CERT_MANAGER=${setup_cert_manager}
 SETUP_GITLAB=${setup_gitlab}
 SETUP_PIHOLE_DNS=${setup_pihole_dns}
+SETUP_DEV_TOOLS=${setup_dev_tools}
+SETUP_WASM=${setup_wasm}
 
 KUBE_VIP_URL=https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
 KUBE_VIP_RBAC_URL=https://kube-vip.io/manifests/rbac.yaml
 NFS_HELM_REPO=https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
-
+GO_URL=https://go.dev/dl/go1.21.1.linux-amd64.tar.gz
+MANIFEST_FOLDER=/tmp/manifests
 ### TODO - add flags to enable/disable features in config
 
 export KUBECONFIG=/etc/kubernetes/admin.conf
+
+################################################
+## Unzip and any manifests                    ##
+################################################
+
+cd $MANIFEST_FOLDER
+unzip manifests.zip
+cd /tmp
+
+
+################################################
+## Import any secrets passed in on cloudinit  ##
+################################################
+
+if [[ -d "MANIFEST_FOLDER/secrets" ]]; then
+  for manifest in $MANIFEST_FOLDER/secrets/*.yaml; do
+    kubectl apply -f $manifest
+  done
+fi
 
 ################################################
 ## Configure Kube VIP Load Balancer           ##
@@ -50,13 +72,19 @@ ctr run --rm --net-host "ghcr.io/kube-vip/kube-vip:$KVVERSION" vip "/kube-vip" m
   --services --arp --leaderElection | tee kubevip.yaml
 kubectl apply -f kubevip.yaml
 
+if [[ -d "MANIFEST_FOLDER/lb" ]]; then
+  for manifest in $MANIFEST_FOLDER/lb/*.yaml; do
+    kubectl apply -f $manifest
+  done
+fi
+
 fi
 
 ################################################
 ## Configure auto-provisioned NFS storage     ##
 ################################################
 
-if [[ -n "$SETUP_NFS_PROVISIONER" ]]; then
+if [[ -n "$SETUP_NFS_PROVISIONER" || -n "$SETUP_GITLAB" ]]; then
 
 helm repo add nfs-subdir-external-provisioner $NFS_HELM_REPO
 helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
@@ -65,6 +93,10 @@ helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs
     --set persistence.enabled=true \
     --set storageClass.defaultClass=true
 
+if [[ -d "MANIFEST_FOLDER/nfs" ]]; then
+  for manifest in $MANIFEST_FOLDER/nfs/*.yaml; do
+    kubectl apply -f $manifest
+  done
 fi
 
 ################################################
@@ -296,6 +328,7 @@ else
     --set global.hosts.domain=$DOMAIN \
     --set global.edition=ce \
     --set global.hosts.externalIP=$GITLAB_IP \
+    --set certmanager-issuer.email=nobody@$DOMAIN \
     --set postgresql.image.tag=13.6.0 \
     --set gitlab.gitaly.persistence.size=50Gi \
     --set gitlab.gitaly.persistence.storageClass=pd-gitlab \
@@ -320,3 +353,25 @@ fi
 ## kubectl -n cert-manager debug -it cert-manager-67576f4f5d-gz5l9 --image=migrulos/non-root-tools:1.7  --target=cert-manager-controller -- /bin/bash
 
 
+################################################
+## Dev tools, wasm shim                        #
+################################################
+
+if [[ -n "$SETUP_DEV_TOOLS" || -n "$SETUP_WASM" ]]; then
+  dnf group install -y "Development Tools"
+  wget $GO_URL
+  tar -xvf go1.* -C /usr/local
+  echo 'export GOROOT=/usr/local/go' | tee -a /etc/profile
+  echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y 
+  source "$HOME/.cargo/env"
+  source /etc/profile
+
+  if [[ -n "$SETUP_WASM" ]]; then
+
+  git clone https://github.com/deislabs/containerd-wasm-shims.git
+  cd containerd-wasm-shims/
+  make
+
+  fi
+fi

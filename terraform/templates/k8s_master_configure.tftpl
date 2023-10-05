@@ -140,3 +140,14 @@ echo "Serving join command with salted URL over tls: $CLUSTER_JOIN_URL, also ava
 kubectl completion bash | sudo tee /etc/bash_completion.d/kubectl > /dev/null
 
 # kubeadm reset -f && rm -rf /etc/cni/net.d && rm -f $HOME/.kube/config && docker system prune -a -f
+
+################################################
+## Adding backup/restore scripts              ##
+################################################
+
+echo "#!/bin/bash" >> /usr/bin/backup-pvs
+echo "mkdir pvs" >> /usr/bin/backup-pvs
+echo "while read pv; do" >> /usr/bin/backup-pvs
+echo "  kubectl get persistentvolumes -A \$pv -o yaml | yq '.status.phase=\"Available\"' > pvs/\$pv.yaml" >> /usr/bin/backup-pvs
+echo "  echo \"exporting \$pv to \$pv.yaml as Available\"" >> /usr/bin/backup-pvs
+echo "done <<< \"\$(kubectl get persistentvolumes -A --no-headers -o custom-columns=':metadata.name')\"" >> /usr/bin/backup-pvs

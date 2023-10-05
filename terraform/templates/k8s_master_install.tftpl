@@ -12,6 +12,7 @@ CONTAINER_IO_PKG=https://download.docker.com/linux/centos/$EL_VERSION/$BASE_ARCH
 KUBERNETES_REPO=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$BASE_ARCH
 HASHICORP_REPO=https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 KUBERNETES_GPG='https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg'
+ETCD_URL=https://github.com/etcd-io/etcd/releases/download/v3.5.9/etcd-v3.5.9-linux-amd64.tar.gz
 HELM_URL=https://get.helm.sh
 HELM_FILE=helm-v$HELM_VERSION-linux-$AARCH.tar.gz
 
@@ -33,7 +34,8 @@ setenforce 0
 sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
 modprobe br_netfilter
 
-dnf install -y wget git lsof firewalld bash-completion iproute-tc python3 python3-pip nano jq bash-completion
+dnf install -y wget git lsof firewalld bash-completion iproute-tc python3 python3-pip nano jq bash-completion make
+yum group install "Development Tools"
 wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 && chmod +x /usr/bin/yq
 sed -i 's/FirewallBackend=nftables/FirewallBackend=iptables/g' /etc/firewalld/firewalld.conf
 systemctl restart firewalld
@@ -79,12 +81,17 @@ dnf install -y terraform vault kubelet kubeadm kubectl --disableexcludes=kuberne
 systemctl enable kubelet
 systemctl start kubelet
 
+# Get etcd on the control plane for atomic backups and restores of cluster state
+cd /tmp
+wget $ETCD_URL
+tar -xvf etcd-v3.5.9-linux-amd64.tar.gz
+mv etcd-v3.5.9-linux-amd64/etc* /usr/bin/
 
 ################################################
 ## Initialize helm                            ##
 ################################################
 
-cd /tmp
+
 curl -o $HELM_FILE $HELM_URL/$HELM_FILE
 tar -zxvf $HELM_FILE
 mv linux-amd64/helm /usr/bin/helm
