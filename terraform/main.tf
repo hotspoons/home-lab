@@ -15,7 +15,7 @@ terraform {
 
 data "archive_file" "manifests" {
   type = "zip"
-  source_dir = "${path.module}/manifests"
+  source_dir = "${path.module}/../manifests/"
   output_path = "${path.module}/tmp/manifests.zip"
 }
 
@@ -24,6 +24,7 @@ resource "random_uuid" "salt" {
 
 locals{
   join_cmd_salt = "${random_uuid.salt.result}"
+  archive_file = "${data.archive_file.manifests.output_path}"
   master_install = jsonencode(chomp(templatefile("templates/k8s_master_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
@@ -123,7 +124,7 @@ data "template_file" "user_data" {
     full_chain = local.full_chain
     cert = local.cert
     cert_private_key = local.cert_private_key
-    manifests = filebase64("${path.module}/tmp/manifests.zip")
+    manifests = filebase64(local.archive_file)
     install_kubernetes = count.index == 0 && var.join_cmd_url == "" ? local.master_install : local.worker_install
     cluster_config = count.index == 0 && var.join_cmd_url == "" ? local.master_cluster_config : local.worker_cluster_join
     package_install = count.index == 0 && var.join_cmd_url == "" ? local.package_install : "#!/bin/bash\n"
