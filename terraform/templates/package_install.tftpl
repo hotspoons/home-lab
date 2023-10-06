@@ -44,7 +44,7 @@ cd /tmp
 ## Import any secrets passed in on cloudinit  ##
 ################################################
 
-if [[ -d "MANIFEST_FOLDER/secrets" ]]; then
+if [[ -d "$MANIFEST_FOLDER/secrets" ]]; then
   for manifest in $MANIFEST_FOLDER/secrets/*.yaml; do
     kubectl apply -f $manifest
   done
@@ -72,7 +72,7 @@ ctr run --rm --net-host "ghcr.io/kube-vip/kube-vip:$KVVERSION" vip "/kube-vip" m
   --services --arp --leaderElection | tee kubevip.yaml
 kubectl apply -f kubevip.yaml
 
-if [[ -d "MANIFEST_FOLDER/lb" ]]; then
+if [[ -d "$MANIFEST_FOLDER/lb" ]]; then
   for manifest in $MANIFEST_FOLDER/lb/*.yaml; do
     kubectl apply -f $manifest
   done
@@ -93,7 +93,7 @@ helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs
     --set persistence.enabled=true \
     --set storageClass.defaultClass=true
 
-if [[ -d "MANIFEST_FOLDER/nfs" ]]; then
+if [[ -d "$MANIFEST_FOLDER/nfs" ]]; then
   for manifest in $MANIFEST_FOLDER/nfs/*.yaml; do
     kubectl apply -f $manifest
   done
