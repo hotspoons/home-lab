@@ -299,11 +299,11 @@ EOF
 
 fi
 
-  $INGRESS_CERT_ARG="--set global.ingress.tls.secretName=gitlab-cert-tls"
+  export INGRESS_CERT_ARG="--set global.ingress.tls.secretName=gitlab-cert-tls"
 
 elif [[ -n "$SETUP_TLS_SECRETS" ]]; then
 
-  $INGRESS_CERT_ARG="--set global.ingress.tls.secretName=$DOMAIN-tls"
+  export INGRESS_CERT_ARG="--set global.ingress.tls.secretName=$DOMAIN-tls"
 
 fi
 
