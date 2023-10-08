@@ -148,7 +148,9 @@ kubectl completion bash | sudo tee /etc/bash_completion.d/kubectl > /dev/null
 echo "#!/bin/bash" >> /usr/bin/backup-pvs
 echo "mkdir pvs" >> /usr/bin/backup-pvs
 echo "while read pv; do" >> /usr/bin/backup-pvs
-echo "  kubectl get persistentvolumes -A \$pv -o yaml | yq '.status.phase=\"Available\"' > pvs/\$pv.yaml" >> /usr/bin/backup-pvs
+echo "  LABEL=\$(kubectl get persistentvolumes -A \$pv -o yaml | yq '.spec.claimRef.name')" >> /usr/bin/backup-pvs
+echo "  kubectl label -A --overwrite pv $pv \"selector=$LABEL\"" >> /usr/bin/backup-pvs
+echo "  kubectl get persistentvolumes -A \$pv -o yaml | yq '.status.phase=\"Available\"' | yq '.spec.persistentVolumeReclaimPolicy=\"Retain\"' > pvs/\$pv.yaml" >> /usr/bin/backup-pvs
 echo "  echo \"exporting \$pv to \$pv.yaml as Available\"" >> /usr/bin/backup-pvs
 echo "done <<< \"\$(kubectl get persistentvolumes -A --no-headers -o custom-columns=':metadata.name')\"" >> /usr/bin/backup-pvs
 echo "zip -r pvs.zip pvs/" >> /usr/bin/backup-pvs

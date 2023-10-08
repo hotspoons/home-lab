@@ -167,7 +167,7 @@ kind: Certificate
 metadata:
   name: wildcard-cert
 spec:
-  secretName: wildcard-cert-tls
+  secretName:   
   dnsNames:
   - "*.$DOMAIN"
   issuerRef:
@@ -269,6 +269,13 @@ fi
 
 if [[ -n "$SETUP_GITLAB" ]]; then
 
+function get_pv_label_arg () {
+  PV="$(kubectl get pv -A -l "selector=$1" -o yaml | yq '.items[0]')"
+  if [[ "$PV" != "null" ]]; then
+    echo " --set $2.persistence.matchLabels=\"selector=$1\""
+  fi
+}
+
 
 if [[ -n "$SETUP_CERT_MANAGER" ]]; then
 
@@ -330,13 +337,13 @@ if [[ -n "$INGRESS_CERT_ARG" ]]; then
     --set global.ingress.configureCertmanager=false \
     --set postgresql.image.tag=13.6.0 \
     --set gitlab.gitaly.persistence.size=50Gi \
-    --set gitlab.gitaly.persistence.storageClass=pd-gitlab \
+    --set gitlab.gitaly.persistence.storageClass=pd-gitlab $(get_pv_label_arg "repo-data-gitlab-gitaly-0" "gitlab.gitaly") \
     --set postgresql.persistence.size=8Gi \
-    --set postgresql.persistence.storageClass=pd-gitlab \
+    --set postgresql.persistence.storageClass=pd-gitlab $(get_pv_label_arg "data-gitlab-postgresql-0" "postgresql") \
     --set minio.persistence.size=10Gi \
-    --set minio.persistence.storageClass=pd-gitlab \
+    --set minio.persistence.storageClass=pd-gitlab $(get_pv_label_arg "gitlab-minio" "minio") \
     --set redis.persistence.size=5Gi \
-    --set redis.persistence.storageClass=pd-gitlab $INGRESS_CERT_ARG \
+    --set redis.persistence.storageClass=pd-gitlab $(get_pv_label_arg "redis-data-gitlab-redis-master-0" "redis") $INGRESS_CERT_ARG \
 
 else
 
@@ -349,13 +356,14 @@ else
     --set certmanager-issuer.email=nobody@$DOMAIN \
     --set postgresql.image.tag=13.6.0 \
     --set gitlab.gitaly.persistence.size=50Gi \
-    --set gitlab.gitaly.persistence.storageClass=pd-gitlab \
+    --set gitlab.gitaly.persistence.storageClass=pd-gitlab $(get_pv_label_arg "repo-data-gitlab-gitaly-0" "gitlab.gitaly") \
     --set postgresql.persistence.size=8Gi \
-    --set postgresql.persistence.storageClass=pd-gitlab \
+    --set postgresql.persistence.storageClass=pd-gitlab $(get_pv_label_arg "data-gitlab-postgresql-0" "postgresql") \
     --set minio.persistence.size=10Gi \
-    --set minio.persistence.storageClass=pd-gitlab \
+    --set minio.persistence.storageClass=pd-gitlab $(get_pv_label_arg "gitlab-minio" "minio") \
     --set redis.persistence.size=5Gi \
-    --set redis.persistence.storageClass=pd-gitlab 
+    --set redis.persistence.storageClass=pd-gitlab $(get_pv_label_arg "redis-data-gitlab-redis-master-0" "redis") \
+
 fi
 
 kubectl get service gitlab-nginx-ingress-controller -o yaml  > /tmp/ingress.yaml
@@ -376,6 +384,7 @@ fi
 ################################################
 
 if [[ -n "$SETUP_DEV_TOOLS" || -n "$SETUP_WASM" ]]; then
+  cd /tmp
   dnf group install -y "Development Tools"
   wget $GO_URL
   tar -xvf go1.* -C /usr/local

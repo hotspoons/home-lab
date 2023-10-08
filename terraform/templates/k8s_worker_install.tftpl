@@ -30,7 +30,7 @@ setenforce 0
 sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
 modprobe br_netfilter
 
-dnf install -y wget git lsof firewalld bash-completion iproute-tc nano jq bash-completion unzip
+dnf install -y wget git lsof firewalld bash-completion iproute-tc nano jq bash-completion zip unzip
 wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 && chmod +x /usr/bin/yq
 sed -i 's/FirewallBackend=nftables/FirewallBackend=iptables/g' /etc/firewalld/firewalld.conf
 systemctl restart firewalld
