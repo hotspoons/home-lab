@@ -363,7 +363,7 @@ sed -i 's/externalTrafficPolicy: Local/externalTrafficPolicy: Cluster/g' /tmp/in
 kubectl replace -f /tmp/ingress.yaml
 
 GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode)
-echo $GITLAB_ROOT_PASSWORD
+echo "GitLab root password: $GITLAB_ROOT_PASSWORD"
 
 fi
 

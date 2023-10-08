@@ -156,7 +156,7 @@ chmod +x /usr/bin/backup-pvs
 
 echo "#!/bin/bash" >> /usr/bin/backup-gitlab-certs
 echo "mkdir gitlab-certs" >> /usr/bin/backup-gitlab-certs
-echo "declare -a secrets=(\"gitlab-cert-tls\" \"gitlab-gitlab-tls\" \"gitlab-minio-tls\" \"gitlab-registry-tls\" \"gitlab-kas-tls\")" >> /usr/bin/backup-gitlab-certs
+echo "declare -a secrets=(\"wildcard-cert-tls\" \"gitlab-cert-tls\" \"gitlab-gitlab-tls\" \"gitlab-minio-tls\" \"gitlab-registry-tls\" \"gitlab-kas-tls\")" >> /usr/bin/backup-gitlab-certs
 echo "for i in \"\$${secrets[@]}\"" >> /usr/bin/backup-gitlab-certs
 echo "do" >> /usr/bin/backup-gitlab-certs
 echo "  kubectl get secret -n default \$i -o yaml > gitlab-certs/\$i.yaml" >> /usr/bin/backup-gitlab-certs
