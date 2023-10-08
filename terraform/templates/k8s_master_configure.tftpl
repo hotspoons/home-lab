@@ -151,3 +151,16 @@ echo "while read pv; do" >> /usr/bin/backup-pvs
 echo "  kubectl get persistentvolumes -A \$pv -o yaml | yq '.status.phase=\"Available\"' > pvs/\$pv.yaml" >> /usr/bin/backup-pvs
 echo "  echo \"exporting \$pv to \$pv.yaml as Available\"" >> /usr/bin/backup-pvs
 echo "done <<< \"\$(kubectl get persistentvolumes -A --no-headers -o custom-columns=':metadata.name')\"" >> /usr/bin/backup-pvs
+echo "zip -r pvs.zip pvs/" >> /usr/bin/backup-pvs
+chmod +x /usr/bin/backup-pvs
+
+echo "#!/bin/bash" >> /usr/bin/backup-gitlab-certs
+echo "mkdir gitlab-certs" >> /usr/bin/backup-gitlab-certs
+echo "declare -a secrets=(\"gitlab-cert-tls\" \"gitlab-gitlab-tls\" \"gitlab-minio-tls\" \"gitlab-registry-tls\" \"gitlab-kas-tls\")" >> /usr/bin/backup-gitlab-certs
+echo "for i in \"\$${secrets[@]}\"" >> /usr/bin/backup-gitlab-certs
+echo "do" >> /usr/bin/backup-gitlab-certs
+echo "  kubectl get secret -n default \$i -o yaml > gitlab-certs/\$i.yaml" >> /usr/bin/backup-gitlab-certs
+echo "done" >> /usr/bin/backup-gitlab-certs
+echo "zip -r gitlab-certs.zip gitlab-certs/" >> /usr/bin/backup-gitlab-certs
+chmod +x /usr/bin/backup-gitlab-certs
+ 
