@@ -214,3 +214,8 @@ collisions) and reuse values for `image_path` and `storage_pool_path`
 4. Launch the python script on the control plane `${compute_name}-0` to serve the join command by running 
 `cd /tmp/join-cluster && python3 server.py`
 5. Run `cd terraform && terraform init && terraform apply -auto-approve` 
+
+## Backup and restore
+TODO mention backup-gitlab-certs and backup-pvs, process for copying zips to `mainfests` and unzipping, etc.
+to allow PVs to bind PVCs on a redeployment of the cluster, and certificates to be reused instead of 
+reissued.
