@@ -276,15 +276,18 @@ function get_pv_label_arg () {
   fi
 }
 
+## Restore any GitLab secrets found. If this folder is discovered, then a new TLS cert won't be requested
+if [[ -d "$MANIFEST_FOLDER/gitlab-secrets" ]]; then
+  for manifest in $MANIFEST_FOLDER/gitlab-secrets/*.yaml; do
+    kubectl apply -f $manifest
+  done
+fi
 
 if [[ -n "$SETUP_CERT_MANAGER" ]]; then
 
 # If we have gitlab certs from a previous installation, use them instead of issuing new certs
-if [[ -d "$MANIFEST_FOLDER/gitlab-certs" ]]; then
-  for manifest in $MANIFEST_FOLDER/gitlab-certs/*.yaml; do
-    kubectl apply -f $manifest
-  done
-
+if [[ -d "$MANIFEST_FOLDER/gitlab-secrets" ]]; then
+  echo "GitLab secrets from a previous installation were detected, skipping certificate request"
 else
 
 cat << EOF | kubectl apply -f -
