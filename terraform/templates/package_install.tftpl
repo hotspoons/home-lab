@@ -272,7 +272,7 @@ if [[ -n "$SETUP_GITLAB" ]]; then
 function get_pv_label_arg () {
   PV="$(kubectl get pv -A -l "selector=$1" -o yaml | yq '.items[0]')"
   if [[ "$PV" != "null" ]]; then
-    echo " --set $2.persistence.matchLabels=\"selector=$1\""
+    echo " --set $2.persistence.matchLabels.selector=$1"
   fi
 }
 

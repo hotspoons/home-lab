@@ -39,9 +39,9 @@ setup_vip_lb            = true
 setup_nfs_provisioner   = true
 setup_tls_secrets       = false
 setup_cert_manager      = true
-setup_gitlab            = false
+setup_gitlab            = true
 setup_pihole_dns        = true
-setup_dev_tools         = false
+setup_dev_tools         = true
 setup_wasm              = false 
 
 ssh_authorized_keys     = [
