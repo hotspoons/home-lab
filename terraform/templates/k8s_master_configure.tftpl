@@ -158,11 +158,31 @@ chmod +x /usr/bin/backup-pvs
 
 echo "#!/bin/bash" >> /usr/bin/backup-gitlab-secrets
 echo "mkdir gitlab-secrets" >> /usr/bin/backup-gitlab-secrets
-echo "declare -a secrets=(\"wildcard-cert-tls\" \"gitlab-cert-tls\" \"gitlab-gitlab-tls\" \"gitlab-minio-tls\" \"gitlab-registry-tls\" \"gitlab-kas-tls\" \"gitlab-postgresql-password\" \"gitlab-redis-secret\" \"\")" >> /usr/bin/backup-gitlab-secrets
+echo "declare -a secrets=(\"wildcard-cert-tls\" \"gitlab-cert-tls\" \"gitlab-gitlab-tls\" \"gitlab-minio-tls\" \"gitlab-registry-tls\" \"gitlab-kas-tls\" \"gitlab-postgresql-password\" \"gitlab-redis-secret\" \"gitlab-rails-secret\" \"gitlab-minio-secret\")" >> /usr/bin/backup-gitlab-secrets
 echo "for i in \"\$${secrets[@]}\"" >> /usr/bin/backup-gitlab-secrets
 echo "do" >> /usr/bin/backup-gitlab-secrets
 echo "  kubectl get secret -n default \$i -o yaml > gitlab-secrets/\$i.yaml" >> /usr/bin/backup-gitlab-secrets
 echo "done" >> /usr/bin/backup-gitlab-secrets
 echo "zip -r gitlab-secrets.zip gitlab-secrets/" >> /usr/bin/backup-gitlab-secrets
 chmod +x /usr/bin/backup-gitlab-secrets
+
+
+echo "#!/bin/bash" >> /usr/bin/backup-gitlab
+echo "kubectl exec \$(kubectl get pods -lrelease=gitlab,app=toolbox --no-headers -o custom-columns=\":metadata.name\") -it -- backup-utility" >> /usr/bin/backup-gitlab
+chmod +x /usr/bin/backup-gitlab
+ 
+
+echo "#!/bin/bash" >> /usr/bin/restore-gitlab
+echo "if [[ -z \"\$1\" ]]; then echo \"You must provide the timestamp of the snapshot to restore in the object bucket.\" && exit 1; fi" >> /usr/bin/restore-gitlab
+echo "SIDEKIQ_N_PODS=\$(kubectl get deploy -n default -lapp=sidekiq,release=gitlab -o jsonpath='{.items[].spec.replicas}')" >> /usr/bin/restore-gitlab
+echo "GITLAB_WS_N_PODS=\$(kubectl get deploy -n default -lapp=webservice,release=gitlab -o jsonpath='{.items[].spec.replicas}')" >> /usr/bin/restore-gitlab
+echo "PROMETHEUS_N_PODS=\$(kubectl get deploy -n default -lapp=prometheus,release=gitlab -o jsonpath='{.items[].spec.replicas}')" >> /usr/bin/restore-gitlab
+echo "kubectl scale deploy -lapp=sidekiq,release=gitlab -n default --replicas=0" >> /usr/bin/restore-gitlab
+echo "kubectl scale deploy -lapp=webservice,release=gitlab -n default --replicas=0" >> /usr/bin/restore-gitlab
+echo "kubectl scale deploy -lapp=prometheus,release=gitlab -n default --replicas=0" >> /usr/bin/restore-gitlab
+echo "kubectl exec \$(kubectl get pods -lrelease=gitlab,app=toolbox --no-headers -o custom-columns=\":metadata.name\") -it -- backup-utility --restore -t \$1" >> /usr/bin/restore-gitlab
+echo "kubectl scale deploy -lapp=sidekiq,release=gitlab -n default --replicas=\$SIDEKIQ_N_PODS" >> /usr/bin/restore-gitlab
+echo "kubectl scale deploy -lapp=webservice,release=gitlab -n default --replicas=\$GITLAB_WS_N_PODS" >> /usr/bin/restore-gitlab
+echo "kubectl scale deploy -lapp=prometheus,release=gitlab -n default --replicas=\$PROMETHEUS_N_PODS" >> /usr/bin/restore-gitlab
+chmod +x /usr/bin/restore-gitlab
  
