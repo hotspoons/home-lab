@@ -88,13 +88,15 @@ tar -xvf etcd-v3.5.9-linux-amd64.tar.gz
 mv etcd-v3.5.9-linux-amd64/etc* /usr/bin/
 
 ################################################
-## Initialize helm                            ##
+## Initialize helm and minio CLI              ##
 ################################################
 
 
 curl -o $HELM_FILE $HELM_URL/$HELM_FILE
 tar -zxvf $HELM_FILE
 mv linux-amd64/helm /usr/bin/helm
+
+curl https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/bin/mc && chmod +x /usr/bin/mc
 
 ################################################
 ## Clean up space                             ##

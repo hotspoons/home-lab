@@ -160,6 +160,8 @@ spec:
             key: api-key
 EOF
 
+# TODO wire up this setting
+if [[ -n "$ISSUE_WILDCARD_CERT" ]]; then
 
 cat << EOF | kubectl apply -f -
 apiVersion: cert-manager.io/v1
@@ -175,11 +177,14 @@ spec:
     kind: ClusterIssuer
 EOF
 
-if [[ -d "$MANIFEST_FOLDER/cert-manager" ]]; then
-  for manifest in $MANIFEST_FOLDER/cert-manager/*.yaml; do
-    kubectl apply -f $manifest
-  done
+  if [[ -d "$MANIFEST_FOLDER/cert-manager" ]]; then
+    for manifest in $MANIFEST_FOLDER/cert-manager/*.yaml; do
+      kubectl apply -f $manifest
+    done
+  fi
+
 fi
+
 
 fi
 

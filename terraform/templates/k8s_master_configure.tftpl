@@ -153,7 +153,14 @@ echo "  kubectl label -A --overwrite pv \$pv \"selector=\$LABEL\"" >> /usr/bin/b
 echo "  kubectl get persistentvolumes -A \$pv -o yaml | yq '.status.phase=\"Available\"' | yq '.spec.persistentVolumeReclaimPolicy=\"Retain\"' | yq 'del(.spec.claimRef)' > pvs/\$pv.yaml" >> /usr/bin/backup-pvs
 echo "  echo \"exporting \$pv to \$pv.yaml as Available\"" >> /usr/bin/backup-pvs
 echo "done <<< \"\$(kubectl get persistentvolumes -A --no-headers -o custom-columns=':metadata.name')\"" >> /usr/bin/backup-pvs
-echo "zip -r pvs.zip pvs/" >> /usr/bin/backup-pvs
+echo "TS=$(date +%Y_%m_%d_%H.%M.%S)" >> /usr/bin/backup-pvs
+echo "zip -r pvs-\$TS.zip pvs/" >> /usr/bin/backup-pvs
+echo "export MINIO_ACCESS_KEY=\$(kubectl get secrets -n default gitlab-minio-secret --template={{.data.accesskey}} | base64 -d)" >> /usr/bin/backup-pvs
+echo "export MINIO_SECRET_KEY=\$(kubectl get secrets -n default gitlab-minio-secret --template={{.data.secretkey}} | base64 -d)" >> /usr/bin/backup-pvs
+echo "if [[ -z \"\$MINIO_ACCESS_KEY\" ]]; then echo \"You do not have minio installed with GitLab, so we cannot automatically back up your secrets. Please copy gitlab-secrets.zip to a safe place. \" && exit 0; fi"
+echo "mc config host add minio https://minio.$DOMAIN \$MINIO_ACCESS_KEY \$MINIO_SECRET_KEY" >> /usr/bin/backup-pvs
+echo "mc mb minio/gitlab-backups" >> /usr/bin/backup-pvs
+echo "mc cp ./pvs-\$TS.zip minio/gitlab-backups/pvs-\$TS.zip" >> /usr/bin/backup-pvs
 chmod +x /usr/bin/backup-pvs
 
 echo "#!/bin/bash" >> /usr/bin/backup-gitlab-secrets
@@ -163,7 +170,14 @@ echo "for i in \"\$${secrets[@]}\"" >> /usr/bin/backup-gitlab-secrets
 echo "do" >> /usr/bin/backup-gitlab-secrets
 echo "  kubectl get secret -n default \$i -o yaml > gitlab-secrets/\$i.yaml" >> /usr/bin/backup-gitlab-secrets
 echo "done" >> /usr/bin/backup-gitlab-secrets
-echo "zip -r gitlab-secrets.zip gitlab-secrets/" >> /usr/bin/backup-gitlab-secrets
+echo "TS=$(date +%Y_%m_%d_%H.%M.%S)" >> /usr/bin/backup-gitlab-secrets
+echo "zip -r gitlab-secrets-\$TS.zip gitlab-secrets/" >> /usr/bin/backup-gitlab-secrets
+echo "export MINIO_ACCESS_KEY=\$(kubectl get secrets -n default gitlab-minio-secret --template={{.data.accesskey}} | base64 -d)" >> /usr/bin/backup-gitlab-secrets
+echo "export MINIO_SECRET_KEY=\$(kubectl get secrets -n default gitlab-minio-secret --template={{.data.secretkey}} | base64 -d)" >> /usr/bin/backup-gitlab-secrets
+echo "if [[ -z \"\$MINIO_ACCESS_KEY\" ]]; then echo \"You do not have minio installed with GitLab, so we cannot automatically back up your secrets. Please copy gitlab-secrets.zip to a safe place. \" && exit 0; fi"
+echo "mc config host add minio https://minio.$DOMAIN \$MINIO_ACCESS_KEY \$MINIO_SECRET_KEY" >> /usr/bin/backup-gitlab-secrets
+echo "mc mb minio/gitlab-backups" >> /usr/bin/backup-gitlab-secrets
+echo "mc cp ./gitlab-secrets-\$TS.zip minio/gitlab-backups/gitlab-secrets-\$TS.zip" >> /usr/bin/backup-gitlab-secrets
 chmod +x /usr/bin/backup-gitlab-secrets
 
 
@@ -186,3 +200,5 @@ echo "kubectl scale deploy -lapp=webservice,release=gitlab -n default --replicas
 echo "kubectl scale deploy -lapp=prometheus,release=gitlab -n default --replicas=\$PROMETHEUS_N_PODS" >> /usr/bin/restore-gitlab
 chmod +x /usr/bin/restore-gitlab
  
+echo '#!/bin/bash' >> /usr/bin/etcd-backup
+>>
