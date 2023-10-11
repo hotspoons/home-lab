@@ -13,6 +13,7 @@ START_IP=${start_ip}
 END_IP=${end_ip}
 VIP_IP=${vip_ip}
 GITLAB_IP=${gitlab_ip}
+GITHUB_PAT=${github_pat}
 SETUP_VIP_LB=${setup_vip_lb}
 SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
 SETUP_TLS_SECRETS=${setup_tls_secrets}
@@ -177,14 +178,33 @@ spec:
     kind: ClusterIssuer
 EOF
 
-  if [[ -d "$MANIFEST_FOLDER/cert-manager" ]]; then
-    for manifest in $MANIFEST_FOLDER/cert-manager/*.yaml; do
-      kubectl apply -f $manifest
-    done
-  fi
+fi
+
+if [[ -d "$MANIFEST_FOLDER/cert-manager" ]]; then
+  for manifest in $MANIFEST_FOLDER/cert-manager/*.yaml; do
+    kubectl apply -f $manifest
+  done
+fi
 
 fi
 
+################################################
+## GitHub personal access token                #
+################################################\
+if [[ -n "$GITHUB_PAT" ]]; then
+
+kubectl create secret generic github-pat \
+  --from-literal personal_access_token="$GITHUB_PAT"
+
+cat << EOF | kubectl apply -f -
+kind: Secret
+type: kubernetes.io/dockerconfigjson
+apiVersion: v1
+metadata:
+  name: dockerconfigjson-github-com
+stringData:
+  .dockerconfigjson: {"auths":{"docker.pkg.github.com":{"auth":"$(kubectl get secrets github-pat --template={{.data.personal_access_token}})"}}}
+EOF
 
 fi
 
@@ -391,7 +411,7 @@ fi
 ## Dev tools, wasm shim                        #
 ################################################
 
-if [[ -n "$SETUP_DEV_TOOLS" || -n "$SETUP_WASM" ]]; then
+if [[ -n "$SETUP_DEV_TOOLS" ]]; then
   cd /tmp
   dnf group install -y "Development Tools"
   wget $GO_URL
@@ -402,11 +422,10 @@ if [[ -n "$SETUP_DEV_TOOLS" || -n "$SETUP_WASM" ]]; then
   source "$HOME/.cargo/env"
   source /etc/profile
 
-  if [[ -n "$SETUP_WASM" ]]; then
+fi
 
-  git clone https://github.com/deislabs/containerd-wasm-shims.git
-  cd containerd-wasm-shims/
-  make
+if [[ -n "$SETUP_WASM" ]]; then
 
-  fi
+GITHUB_AUTH=""
+
 fi

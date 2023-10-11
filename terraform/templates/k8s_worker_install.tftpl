@@ -4,6 +4,7 @@ BASE_ARCH=${base_arch}
 AARCH=${aarch}
 EL_VERSION=${el_version}
 CONTAINERD_VERSION=${containerd_version}
+HELM_VERSION=${helm_version}
 
 #Setup configuration
 DOCKER_REPO=https://download.docker.com/linux/centos/docker-ce.repo
@@ -11,6 +12,8 @@ CONTAINER_IO_PKG=https://download.docker.com/linux/centos/$EL_VERSION/$BASE_ARCH
 KUBERNETES_REPO=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$BASE_ARCH
 HASHICORP_REPO=https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 KUBERNETES_GPG='https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg'
+HELM_URL=https://get.helm.sh
+HELM_FILE=helm-v$HELM_VERSION-linux-$AARCH.tar.gz
 
 ################################################
 ## Fix stupidity in default dhclient for EL   ##
@@ -76,6 +79,16 @@ dnf install -y terraform vault kubelet kubeadm kubectl --disableexcludes=kuberne
 systemctl enable kubelet
 systemctl start kubelet
 
+################################################
+## Initialize helm and minio CLI              ##
+################################################
+
+
+curl -o $HELM_FILE $HELM_URL/$HELM_FILE
+tar -zxvf $HELM_FILE
+mv linux-amd64/helm /usr/bin/helm
+
+curl https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/bin/mc && chmod +x /usr/bin/mc
 
 ################################################
 ## Clean up space                             ##

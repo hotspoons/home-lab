@@ -36,6 +36,7 @@ locals{
     base_arch: var.base_arch,
     aarch: var.aarch,
     containerd_version: var.containerd_version,
+    helm_version: var.helm_version,
     el_version: var.el_version
   })))
   master_cluster_config = jsonencode(chomp(templatefile("templates/k8s_master_configure.tftpl", {
@@ -69,6 +70,7 @@ locals{
     gitlab_ip: var.gitlab_ip,
     pi_hole_server: var.pi_hole_server,
     pi_hole_password: var.pi_hole_password,
+    github_pat: var.github_pat,
     setup_vip_lb: var.setup_vip_lb ? "true" : "",
     setup_nfs_provisioner: var.setup_nfs_provisioner ? "true" : "",
     setup_tls_secrets: var.setup_tls_secrets ? "true" : "",

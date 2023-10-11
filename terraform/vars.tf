@@ -194,6 +194,12 @@ variable gitlab_ip {
     default = ""
 }
 
+variable github_pat {
+    description = "GitHub username and personal access token, required to pull images from ghcr.io, seperated with a colon"
+    type = string
+    default = ""
+}
+
 variable workloads_on_control_plane {
     description = "Use control plane as a worker node"
     type = bool
