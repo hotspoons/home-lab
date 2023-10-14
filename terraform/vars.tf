@@ -46,6 +46,18 @@ variable "network_bridge" {
     default = "br0"
 }
 
+variable "hp_storage_path" {
+    description = "Path to a folder where high performance block storage files will reside (empty for no high performance block storage)"
+    type = string
+    default = ""
+}
+
+variable "gpu_nodes" {
+    description = "0-indexed list of nodes for which you wish to bind GPUs, currently only 1 supported though"
+    type = list
+    default = []
+}
+
 variable "domain" {
     description = "A domain that will be used as the top-level domain for all deployments"
     type = string

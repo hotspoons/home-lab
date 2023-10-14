@@ -7,6 +7,7 @@ compute_name            = "rocky-k8s-hosts"
 memory                  = "8192"
 instance_count          = 3
 cpu_cores               = 8
+gpu_nodes               = [1]
 network_bridge          = "ovirtmgmt"
 root_password           = "changeme"
 domain                  = "siomporas.com"

@@ -22,7 +22,29 @@ data "archive_file" "manifests" {
 resource "random_uuid" "salt" {
 }
 
+resource "null_resource" "gpu_info" {
+  provisioner "local-exec" {
+    command =  <<EOF
+# Assumes a single GPU (P4 in my case), no audio. TODO this should support more than 1 GPU, and 
+# perhaps figure out vGPU setup even though that seems overkill for this use case
+PCI_ID=$(lspci -nn | grep -i nvidia | grep -i controller | egrep -o "[[:xdigit:]]{4}:[[:xdigit:]]{4}")
+BUS_ID=$(lspci -Dnn | grep -i nvidia | grep -i controller | awk '{ print $1 }')
+_DOMAIN=$(echo $BUS_ID | cut -d ':' -f 1 | xargs printf '0x%04x')
+_BUS=$(echo $BUS_ID | cut -d ':' -f 2 | xargs printf '0x%02x')
+_SLOT=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 1 | xargs printf '0x%02x')
+_FUNCTION=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 | xargs printf '0x%01x')
+if [[ -n "$_DOMAIN" && -n "$_BUS" && -n "$_SLOT" && -n "$_FUNCTION" ]]; then
+  echo "domain=$_DOMAIN" > ${path.module}/tmp/gpu.env
+  echo "bus=$_BUS" >> ${path.module}/tmp/gpu.env
+  echo "slot=$_SLOT" >> ${path.module}/tmp/gpu.env
+  echo "function=$_FUNCTION" >> ${path.module}/tmp/gpu.env
+fi
+    EOF
+  }
+}
+
 locals{
+  depends_on = [null_resource.gpu_info]
   join_cmd_salt = "${random_uuid.salt.result}"
   archive_file = "${data.archive_file.manifests.output_path}"
   master_install = jsonencode(chomp(templatefile("templates/k8s_master_install.tftpl", {
@@ -83,6 +105,9 @@ locals{
   cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
   full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")
   cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : jsonencode("")
+  gpu_map = fileexists("${path.module}/tmp/gpu.env") ? 
+    { for tuple in regexall("(.*?)=(.*)", file("${path.module}/tmp/gpu.env")) : tuple[0] => tuple[1] } :
+    {}
 }
 
 #########################
@@ -185,5 +210,12 @@ resource "libvirt_domain" "domain-vm" {
     type        = "spice"
     listen_type = "address"
     autoport    = true
+  }
+  # If we found a GPU and we want a GPU node, go ahead and transform the output to pass through the PCI bus
+  # requires io_mmu, virtio binding, and other stuff to make GPU passthrough. TODO vGPU
+  xml {
+    xslt = count.index in var.gpu_nodes && fileexists("${path.module}/tmp/gpu.env") ? 
+      chomp(templatefile("templates/k8s_master_configure.tftpl", local.gpu_map)) : 
+      "<?xml version=\"1.0\" ?><xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" />"
   }
 }

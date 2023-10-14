@@ -4,7 +4,7 @@ dnf -y update
 yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 dnf -y install nfs-utils samba samba-common samba-client postfix cyrus-sasl-plain mailx \
      cyrus-sasl yum-utils terraform wget git qemu-kvm virt-manager libvirt virt-install \
-     virt-viewer virt-top bridge-utils virt-top libguestfs-tools
+     virt-viewer virt-top bridge-utils virt-top libguestfs-tools libxslt
 systemctl enable --now nfs-server rpcbind
 getent group kvm || groupadd kvm -g 36
 getent passwd vdsm || useradd vdsm -u 36 -g 36
@@ -66,3 +66,34 @@ virsh net-autostart br0
 echo "nmcli con down $INTERFACE" >> upbridge.sh
 echo "nmcli con up br0" >> upbridge.sh
 bash upbridge.sh ## Reconnect via ssh if the connection was lost, rerun exports above
+
+## Enable GPU passthrough support
+cp /etc/default/grub /tmp/grub-default-backup
+source /etc/default/grub
+GRUB_CMDLINE_LINUX="$GRUB_CMDLINE_LINUX intel_iommu=on"
+sed -i "s%GRUB_CMDLINE_LINUX.*%GRUB_CMDLINE_LINUX=\"$GRUB_CMDLINE_LINUX\"%" /etc/default/grub
+grub2-mkconfig -o /boot/grub2/grub.cfg
+dnf install -y \
+    https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+    https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-8.noarch.rpm
+dnf install -y kernel-headers-$(uname -r) kernel-devel-$(uname -r) tar bzip2 make automake \
+     gcc gcc-c++ pciutils elfutils-libelf-devel libglvnd-opengl libglvnd-glx libglvnd-devel acpid pkgconfig dkms
+
+# See https://cloud.google.com/compute/docs/gpus/grid-drivers-table
+
+mkdir /tmp/nvidia-driver && cd /tmp/nvidia-driver
+curl -o nvidia-535-104.zip -L https://github.com/justin-himself/NVIDIA-VGPU-Driver-Archive/releases/download/16.1/NVIDIA-GRID-RHEL-8.8-535.104.06-535.104.05-537.13.zip
+unzip nvidia-535-104.zip
+# To patch consumer cards for vGPU, use this utility: https://github.com/VGPU-Community-Drivers/vGPU-Unlock-patcher.git
+# I am using 1 GPU for 1 guest instance that will have GPU annotated kubernetes nodes, should be plenty for my use case
+rpm -i Host_Drivers/NVIDIA-vGPU-rhel-8.8-535.104.06.x86_64.rpm
+PCI_ID=$(lspci -nn | grep -i nvidia | grep -i controller | egrep -o "[[:xdigit:]]{4}:[[:xdigit:]]{4}")
+BUS_ID=$(lspci -Dnn | grep -i nvidia | grep -i controller | awk '{ print $1 }')
+# TODO echo this stuff to bind vfio now we got the info, will do later
+_DOMAIN=$(echo $BUS_ID | cut -d ':' -f 1 | xargs printf '0x%04x')
+_BUS=$(echo $BUS_ID | cut -d ':' -f 2 | xargs printf '0x%02x')
+_SLOT=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 1 | xargs printf '0x%02x')
+_FUNCTION=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 | xargs printf '0x%01x')
+
+echo "options vfio-pci ids=$PCI_ID" > /etc/modprobe.d/vfio.conf
+echo 'vfio-pci' > /etc/modules-load.d/vfio-pci.conf
