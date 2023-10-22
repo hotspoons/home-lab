@@ -33,12 +33,18 @@ _DOMAIN=$(echo $BUS_ID | cut -d ':' -f 1 | xargs printf '0x%04x')
 _BUS=$(echo $BUS_ID | cut -d ':' -f 2 | xargs printf '0x%02x')
 _SLOT=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 1 | xargs printf '0x%02x')
 _FUNCTION=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 | xargs printf '0x%01x')
-if [[ -n "$_DOMAIN" && -n "$_BUS" && -n "$_SLOT" && -n "$_FUNCTION" ]]; then
+if [[ "$_DOMAIN" != "0x0000" && "$_BUS" != "0x00" && "$_SLOT" != "0x00"  && "$_FUNCTION" != "0x0" ]]; then
   echo "domain=$_DOMAIN" > ${path.module}/tmp/gpu.env
   echo "bus=$_BUS" >> ${path.module}/tmp/gpu.env
   echo "slot=$_SLOT" >> ${path.module}/tmp/gpu.env
   echo "function=$_FUNCTION" >> ${path.module}/tmp/gpu.env
+else
+  echo "domain=" > ${path.module}/tmp/gpu.env
+  echo "bus=" >> ${path.module}/tmp/gpu.env
+  echo "slot=" >> ${path.module}/tmp/gpu.env
+  echo "function=" >> ${path.module}/tmp/gpu.env
 fi
+touch /tmp/tfworks.txt
     EOF
   }
 }
@@ -105,9 +111,7 @@ locals{
   cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
   full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")
   cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : jsonencode("")
-  gpu_map = fileexists("${path.module}/tmp/gpu.env") ? 
-    { for tuple in regexall("(.*?)=(.*)", file("${path.module}/tmp/gpu.env")) : tuple[0] => tuple[1] } :
-    {}
+  gpu_map = { for tuple in regexall("(.*?)=(.*)", file("${path.module}/tmp/gpu.env")) : tuple[0] => tuple[1] }
 }
 
 #########################
@@ -156,6 +160,7 @@ data "template_file" "user_data" {
     cluster_config = count.index == 0 && var.join_cmd_url == "" ? local.master_cluster_config : local.worker_cluster_join
     package_install = count.index == 0 && var.join_cmd_url == "" ? local.package_install : "#!/bin/bash\n"
     ssh_authorized_keys = jsonencode(var.ssh_authorized_keys)
+    ssh_keys = jsonencode(var.ssh_keys)
   }
 }
 
@@ -213,9 +218,7 @@ resource "libvirt_domain" "domain-vm" {
   }
   # If we found a GPU and we want a GPU node, go ahead and transform the output to pass through the PCI bus
   # requires io_mmu, virtio binding, and other stuff to make GPU passthrough. TODO vGPU
-  xml {
-    xslt = count.index in var.gpu_nodes && fileexists("${path.module}/tmp/gpu.env") ? 
-      chomp(templatefile("templates/k8s_master_configure.tftpl", local.gpu_map)) : 
-      "<?xml version=\"1.0\" ?><xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" />"
-  }
+  #xml {
+  #  xslt = contains(var.gpu_nodes, count.index) && local.gpu_map.domain != "" ? chomp(templatefile("templates/gpu.xslt", local.gpu_map)) : "<?xml version=\"1.0\" ?><xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" />"
+  #}
 }

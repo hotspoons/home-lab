@@ -101,6 +101,11 @@ variable "cert_private_key" {
     default = ""
 }
 
+variable "ssh_keys" {
+    description = "A map of types (rsa_private, rsa_public, dsa_private, dsa_public, ed25519_private, ed25519_public) ssh keys to be installed on the new VM. Should be public/private pairs"
+    type = map
+    default = {}
+}
 variable "ssh_authorized_keys" {
     description = "A list of ssh authorized keys to be installed on the new VM"
     type = list(string)
