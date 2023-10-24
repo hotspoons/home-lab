@@ -13,6 +13,7 @@ START_IP=${start_ip}
 END_IP=${end_ip}
 VIP_IP=${vip_ip}
 GITLAB_IP=${gitlab_ip}
+GITLAB_VERSION=${gitlab_version}
 GITHUB_PAT=${github_pat}
 SETUP_VIP_LB=${setup_vip_lb}
 SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
@@ -358,6 +359,7 @@ if [[ -n "$INGRESS_CERT_ARG" ]]; then
 
   helm upgrade --install gitlab gitlab/gitlab \
     --timeout 1800s \
+    --version $GITLAB_VERSION \
     --set global.hosts.domain=$DOMAIN \
     --set global.edition=ce \
     --set global.hosts.externalIP=$GITLAB_IP \
@@ -378,6 +380,7 @@ else
 # If we don't have a cert from either CloudFlare or self-provided, use the default self-signed self-managed cert manager instead
   helm upgrade --install gitlab gitlab/gitlab \
     --timeout 1800s \
+    --version $GITLAB_VERSION \
     --set global.hosts.domain=$DOMAIN \
     --set global.edition=ce \
     --set global.hosts.externalIP=$GITLAB_IP \
