@@ -1,6 +1,6 @@
 # VM setup
 
-storage_pool_path       = "/tmp/vms/k8s"
+storage_pool_path       = "/media/nvme/vms/k8s"
 image_path              = "/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
 remote_host             = "qemu+ssh://file-server.lan"
 compute_name            = "rocky-k8s-hosts"
@@ -32,7 +32,7 @@ base_arch               = "x86_64"
 aarch                   = "amd64"
 containerd_version      = "1.6.24-3.1.el8"
 helm_version            = "3.12.3"
-gitlab_version          = "7.4.1"
+gitlab_helmchart_version= "7.4.1"
 kubernetes_version      = "1.28.2"
 external_dns_ip         = "192.168.1.201"
 external_dns_suffix     = ""

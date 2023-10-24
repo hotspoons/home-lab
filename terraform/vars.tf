@@ -189,8 +189,18 @@ variable containerd_version {
 }
 
 variable helm_version {
-    description = "The version of helm you wish to target, e.g. 3.9.0"
+    description = "The version of helm you wish to target, default: 3.9.0"
     default = "3.12.3"
+}
+
+variable kubernetes_version {
+    description = "The version of Kubernetes you wish to target, default: 1.28.2"
+    default = "1.28.2"
+}
+
+variable gitlab_helmchart_version {
+    description = "The version of gitlab heml chart you wish to target, default: 7.4.1"
+    default = "7.4.1"
 }
 
 variable external_dns_ip {
