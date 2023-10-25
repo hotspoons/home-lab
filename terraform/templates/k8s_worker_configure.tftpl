@@ -27,6 +27,8 @@ firewall-cmd --reload
 ## TODO - Firewall rules prevent kube-vip from operating, need to figure out which ports are needed
 ## for now we just disable to save frustration
 systemctl stop firewalld.service
+systemctl disable firewalld.service
+
 
 ################################################
 ## Join cluster                               ##

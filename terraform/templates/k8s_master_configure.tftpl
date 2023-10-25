@@ -34,6 +34,7 @@ firewall-cmd --reload
 ## TODO - Firewall rules prevent kube-vip from operating, need to figure out which ports are needed
 ## for now we just disable to save frustration
 systemctl stop firewalld.service
+systemctl disable firewalld.service
 
 
 ################################################
@@ -46,6 +47,8 @@ cat <<EOF > /tmp/kubeadm-config.yaml
 kind: ClusterConfiguration
 apiVersion: kubeadm.k8s.io/v1beta3
 kubernetesVersion: $KUBERNETES_VERSION
+networking:
+  podSubnet: "10.244.0.0/16" # --pod-network-cidr
 ---
 kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
@@ -53,7 +56,7 @@ cgroupDriver: cgroupfs
 resolvConf: $RESOLV_CONF_LOCATION
 EOF
 
-kubeadm init --config /tmp/kubeadm-config.yaml --pod-network-cidr=10.244.0.0/16
+kubeadm init --config /tmp/kubeadm-config.yaml
 mkdir -p /root/.kube
 yes | cp /etc/kubernetes/admin.conf /root/.kube/config
 chown $(id -u):$(id -g) /root/.kube/config
