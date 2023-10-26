@@ -173,4 +173,4 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-terraform/tmp/*
+terraform/tmp/manifests.zip

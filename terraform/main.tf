@@ -44,7 +44,6 @@ else
   echo "slot=" >> ${path.module}/tmp/gpu.env
   echo "function=" >> ${path.module}/tmp/gpu.env
 fi
-touch /tmp/tfworks.txt
     EOF
   }
 }
@@ -222,7 +221,7 @@ resource "libvirt_domain" "domain-vm" {
   }
   # If we found a GPU and we want a GPU node, go ahead and transform the output to pass through the PCI bus
   # requires io_mmu, virtio binding, and other stuff to make GPU passthrough. TODO vGPU
-  #xml {
-  #  xslt = contains(var.gpu_nodes, count.index) && local.gpu_map.domain != "" ? chomp(templatefile("templates/gpu.xslt", local.gpu_map)) : "<?xml version=\"1.0\" ?><xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" />"
-  #}
+  xml {
+    xslt = contains(var.gpu_nodes, count.index) && local.gpu_map.domain != "" ? chomp(templatefile("templates/gpu.xslt", local.gpu_map)) : null
+  }
 }

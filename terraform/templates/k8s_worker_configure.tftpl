@@ -49,3 +49,16 @@ $KUBE_JOIN_COMMAND
 ## Bash completion                            ##
 ################################################
 kubectl completion bash | sudo tee /etc/bash_completion.d/kubectl > /dev/null
+
+
+
+###################################################
+## Install NVidia drivers if this node has a GPU ##
+###################################################
+if [[ -n "$(lspci | grep -i NVIDIA | grep -i controller)" ]]; then
+
+dnf config-manager -y --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+dnf install -y kernel-devel-$(uname -r) kernel-headers-$(uname -r)
+dnf install -y nvidia-driver cuda-driver cuda-toolkit
+
+fi
