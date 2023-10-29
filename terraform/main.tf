@@ -109,7 +109,8 @@ locals{
     setup_gitlab: var.setup_gitlab ? "true" : "",
     setup_pihole_dns: var.setup_pihole_dns ? "true" : "",
     setup_dev_tools: var.setup_dev_tools ? "true" : "",
-    setup_wasm: var.setup_wasm ? "true" : ""
+    setup_wasm: var.setup_wasm ? "true" : "",
+    setup_gpu_operator: local.gpu_map.domain != "" ? "true" : ""
   })))
   cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
   full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")

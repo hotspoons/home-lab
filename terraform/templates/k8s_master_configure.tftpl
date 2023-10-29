@@ -52,7 +52,7 @@ networking:
 ---
 kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
-cgroupDriver: cgroupfs
+cgroupDriver: systemd
 resolvConf: $RESOLV_CONF_LOCATION
 EOF
 

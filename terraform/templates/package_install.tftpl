@@ -23,6 +23,7 @@ SETUP_GITLAB=${setup_gitlab}
 SETUP_PIHOLE_DNS=${setup_pihole_dns}
 SETUP_DEV_TOOLS=${setup_dev_tools}
 SETUP_WASM=${setup_wasm}
+SETUP_GPU_OPERATOR=${setup_gpu_operator}
 
 KUBE_VIP_URL=https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
 KUBE_VIP_RBAC_URL=https://kube-vip.io/manifests/rbac.yaml
@@ -431,4 +432,18 @@ if [[ -n "$SETUP_WASM" ]]; then
 
 GITHUB_AUTH=""
 
+fi
+
+if [[ -n "$SETUP_GPU_OPERATOR" ]]; then
+
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia \
+   && helm repo update
+
+helm install --generate-name \
+     -n gpu-operator --create-namespace \
+     nvidia/gpu-operator \
+     --set driver.enabled=false \
+    --set toolkit.enabled=false \
+    --set validator.driver.env[0].name=DISABLE_DEV_CHAR_SYMLINK_CREATION \
+    --set-string validator.driver.env[0].value=true
 fi
