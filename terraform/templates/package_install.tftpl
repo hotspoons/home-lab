@@ -405,6 +405,9 @@ kubectl replace -f /tmp/ingress.yaml
 GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode)
 echo "GitLab root password: $GITLAB_ROOT_PASSWORD"
 
+# Backup GitLab daily
+echo "0 0 * * * /usr/bin/backup-gitlab" >> /etc/crontab
+
 fi
 
 ### debug distroless container example!: 
