@@ -17,16 +17,16 @@
           <xsl:attribute name="managed">yes</xsl:attribute>
           <xsl:element name="driver">
             <xsl:attribute name="name">vfio</xsl:attribute>
-            <xsl:element name="source">
-              <xsl:element name="source">
-                <xsl:attribute name="domain">${domain}</xsl:attribute>
-                <xsl:attribute name="bus">${bus}</xsl:attribute>
-                <xsl:attribute name="slot">${slot}</xsl:attribute>
-                <xsl:attribute name="function">${function}</xsl:attribute>
-              </xsl:element>
-            </xsl:element>
           </xsl:element>
+          <xsl:element name="source">
+            <xsl:element name="address">
+              <xsl:attribute name="domain">${domain}</xsl:attribute>
+              <xsl:attribute name="bus">${bus}</xsl:attribute>
+              <xsl:attribute name="slot">${slot}</xsl:attribute>
+              <xsl:attribute name="function">${function}</xsl:attribute>
+            </xsl:element>
         </xsl:element>
+      </xsl:element>
     </xsl:copy>
   </xsl:template>
 </xsl:stylesheet>

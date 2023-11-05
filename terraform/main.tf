@@ -23,31 +23,13 @@ resource "random_uuid" "salt" {
 }
 
 resource "null_resource" "gpu_info" {
+  triggers = {
+    always_run = timestamp()
+  }
   provisioner "local-exec" {
     command =  <<EOF
-# Assumes a single GPU (P4 in my case), no audio. TODO this should support more than 1 GPU, and 
-# perhaps figure out vGPU setup even though that seems overkill for this use case
-PCI_ID=$(lspci -nn | grep -i nvidia | grep -i controller | egrep -o "[[:xdigit:]]{4}:[[:xdigit:]]{4}")
-BUS_ID=$(lspci -Dnn | grep -i nvidia | grep -i controller | awk '{ print $1 }')
-_DOMAIN=$(echo $BUS_ID | cut -d ':' -f 1 | xargs printf '0x%04x')
-_BUS=$(echo $BUS_ID | cut -d ':' -f 2 | xargs printf '0x%02x')
-_SLOT=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 1 | xargs printf '0x%02x')
-_FUNCTION=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 | xargs printf '0x%01x')
-if [[ "$_DOMAIN" != "0x0000" && "$_BUS" != "0x00" && "$_SLOT" != "0x00"  && "$_FUNCTION" != "0x0" ]]; then
-  echo "domain=$_DOMAIN" > ${path.module}/tmp/gpu.env
-  echo "bus=$_BUS" >> ${path.module}/tmp/gpu.env
-  echo "slot=$_SLOT" >> ${path.module}/tmp/gpu.env
-  echo "function=$_FUNCTION" >> ${path.module}/tmp/gpu.env
-  echo "BUS_ID=$BUS_ID" >> ${path.module}/tmp/gpu-debug.env
-  echo "PCI_ID=$PCI_ID" >> ${path.module}/tmp/gpu-debug.env
-else
-  echo "domain=" > ${path.module}/tmp/gpu.env
-  echo "bus=" >> ${path.module}/tmp/gpu.env
-  echo "slot=" >> ${path.module}/tmp/gpu.env
-  echo "function=" >> ${path.module}/tmp/gpu.env
-  echo "BUS_ID=$BUS_ID" >> ${path.module}/tmp/gpu-debug.env
-  echo "PCI_ID=$PCI_ID" >> ${path.module}/tmp/gpu-debug.env
-fi
+export BASE_PATH=${path.module}
+${path.module}/../scripts/get-gpuinfo.sh
     EOF
   }
 }
