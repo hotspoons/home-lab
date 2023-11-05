@@ -79,6 +79,16 @@ dnf install -y \
 dnf install -y kernel-headers-$(uname -r) kernel-devel-$(uname -r) tar bzip2 make automake \
      gcc gcc-c++ pciutils elfutils-libelf-devel libglvnd-opengl libglvnd-glx libglvnd-devel acpid pkgconfig dkms
 
+# rclone backup to Google Drive (needs client ID and client secret for Google Drive plus setup on host with browser)
+curl https://rclone.org/install.sh | bash
+# rclone config # ...
+
+echo "#!/bin/bash" >> /usr/bin/backup-lab
+echo "rclone copy /nfs/exports/kubernetes/default-gitlab-minio-pvc-f774a2be-48d4-473a-a86b-fdf511b020c0/gitlab-backups/ \\"  >> /usr/bin/backup-lab
+echo "    'Google Drive:'/gitlab-backups/ " >> /usr/bin/backup-lab
+chmod +x  >> /usr/bin/backup-lab
+
+echo "0 1 * * * /usr/bin/backup-lab" >> /etc/crontab
 # See https://cloud.google.com/compute/docs/gpus/grid-drivers-table
 
 #mkdir /tmp/nvidia-driver && cd /tmp/nvidia-driver
