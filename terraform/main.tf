@@ -38,11 +38,15 @@ if [[ "$_DOMAIN" != "0x0000" && "$_BUS" != "0x00" && "$_SLOT" != "0x00"  && "$_F
   echo "bus=$_BUS" >> ${path.module}/tmp/gpu.env
   echo "slot=$_SLOT" >> ${path.module}/tmp/gpu.env
   echo "function=$_FUNCTION" >> ${path.module}/tmp/gpu.env
+  echo "BUS_ID=$BUS_ID" >> ${path.module}/tmp/gpu-debug.env
+  echo "PCI_ID=$PCI_ID" >> ${path.module}/tmp/gpu-debug.env
 else
   echo "domain=" > ${path.module}/tmp/gpu.env
   echo "bus=" >> ${path.module}/tmp/gpu.env
   echo "slot=" >> ${path.module}/tmp/gpu.env
   echo "function=" >> ${path.module}/tmp/gpu.env
+  echo "BUS_ID=$BUS_ID" >> ${path.module}/tmp/gpu-debug.env
+  echo "PCI_ID=$PCI_ID" >> ${path.module}/tmp/gpu-debug.env
 fi
     EOF
   }

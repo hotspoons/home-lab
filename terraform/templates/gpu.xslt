@@ -10,13 +10,23 @@
 
   <xsl:template match="/domain/devices">
     <xsl:copy>
-      <xsl:apply-templates select="@* | node()"/>
-        <hostdev mode="subsystem" type="pci" managed="yes">
-          <driver name="vfio"/>
-          <source>
-            <address domain="${domain}" bus="${bus}" slot="${slot}" function="${function}"/>
-          </source>
-        </hostdev>
+      <xsl:apply-templates select="@* | node()|@*"/>
+        <xsl:element name="hostdev">
+          <xsl:attribute name="mode">subsystem</xsl:attribute>
+          <xsl:attribute name="type">pci</xsl:attribute>
+          <xsl:attribute name="managed">yes</xsl:attribute>
+          <xsl:element name="driver">
+            <xsl:attribute name="name">vfio</xsl:attribute>
+            <xsl:element name="source">
+              <xsl:element name="source">
+                <xsl:attribute name="domain">${domain}</xsl:attribute>
+                <xsl:attribute name="bus">${bus}</xsl:attribute>
+                <xsl:attribute name="slot">${slot}</xsl:attribute>
+                <xsl:attribute name="function">${function}</xsl:attribute>
+              </xsl:element>
+            </xsl:element>
+          </xsl:element>
+        </xsl:element>
     </xsl:copy>
   </xsl:template>
 </xsl:stylesheet>
