@@ -29,7 +29,6 @@ data "external" "gpu_info" {
 }
 
 locals{
-  depends_on = [null_resource.gpu_info]
   join_cmd_salt = "${random_uuid.salt.result}"
   archive_file = "${data.archive_file.manifests.output_path}"
   master_install = jsonencode(chomp(templatefile("templates/k8s_master_install.tftpl", {
@@ -95,7 +94,7 @@ locals{
   cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
   full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")
   cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : jsonencode("")
-  gpu_map = data.external.gpu_info
+  gpu_map = data.external.gpu_info.result
 }
 
 #########################
