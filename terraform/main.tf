@@ -22,15 +22,9 @@ data "archive_file" "manifests" {
 resource "random_uuid" "salt" {
 }
 
-resource "null_resource" "gpu_info" {
-  triggers = {
-    always_run = timestamp()
-  }
-  provisioner "local-exec" {
-    command =  <<EOF
-export BASE_PATH=${path.module}
-${path.module}/../scripts/get-gpuinfo.sh
-    EOF
+data "external" "gpu_info" {
+  program = ["bash", "${path.module}/../scripts/get-gpuinfo.sh"]
+  query = {
   }
 }
 
@@ -101,7 +95,7 @@ locals{
   cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
   full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")
   cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : jsonencode("")
-  gpu_map = { for tuple in regexall("(.*?)=(.*)", file("${path.module}/tmp/gpu.env")) : tuple[0] => tuple[1] }
+  gpu_map = data.external.gpu_info
 }
 
 #########################
