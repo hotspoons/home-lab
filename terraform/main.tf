@@ -22,7 +22,20 @@ data "archive_file" "manifests" {
 resource "random_uuid" "salt" {
 }
 
+resource "null_resource" "gpu_info" {
+  triggers = {
+    always_run = timestamp()
+  }
+  provisioner "local-exec" {
+    command =  <<EOF
+export BASE_PATH=${path.module}
+${path.module}/../scripts/get-gpuinfo.sh
+    EOF
+  }
+}
+
 locals{
+  depends_on = [null_resource.gpu_info]
   join_cmd_salt = "${random_uuid.salt.result}"
   archive_file = "${data.archive_file.manifests.output_path}"
   master_install = jsonencode(chomp(templatefile("templates/k8s_master_install.tftpl", {
@@ -30,12 +43,15 @@ locals{
     aarch: var.aarch,
     containerd_version: var.containerd_version,
     helm_version: var.helm_version,
+    kubernetes_version: var.kubernetes_version,
     el_version: var.el_version
   })))
   worker_install = jsonencode(chomp(templatefile("templates/k8s_worker_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
     containerd_version: var.containerd_version,
+    helm_version: var.helm_version,
+    kubernetes_version: var.kubernetes_version,
     el_version: var.el_version
   })))
   master_cluster_config = jsonencode(chomp(templatefile("templates/k8s_master_configure.tftpl", {
@@ -45,6 +61,7 @@ locals{
     join_cmd_salt: var.join_cmd_url != "" ? "" : local.join_cmd_salt,
     workloads_on_control_plane: var.workloads_on_control_plane ? "true" : "",
     external_dns_ip: var.external_dns_ip,
+    kubernetes_version: var.kubernetes_version,
     external_dns_suffix: var.external_dns_suffix
   })))
   worker_cluster_join = jsonencode(chomp(templatefile("templates/k8s_worker_configure.tftpl", {
@@ -69,6 +86,8 @@ locals{
     gitlab_ip: var.gitlab_ip,
     pi_hole_server: var.pi_hole_server,
     pi_hole_password: var.pi_hole_password,
+    github_pat: var.github_pat,
+    gitlab_helmchart_version: var.gitlab_helmchart_version,
     setup_vip_lb: var.setup_vip_lb ? "true" : "",
     setup_nfs_provisioner: var.setup_nfs_provisioner ? "true" : "",
     setup_tls_secrets: var.setup_tls_secrets ? "true" : "",
@@ -76,11 +95,13 @@ locals{
     setup_gitlab: var.setup_gitlab ? "true" : "",
     setup_pihole_dns: var.setup_pihole_dns ? "true" : "",
     setup_dev_tools: var.setup_dev_tools ? "true" : "",
-    setup_wasm: var.setup_wasm ? "true" : ""
+    setup_wasm: var.setup_wasm ? "true" : "",
+    setup_gpu_operator: local.gpu_map.domain != "" ? "true" : ""
   })))
   cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
   full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")
   cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : jsonencode("")
+  gpu_map = { for tuple in regexall("(.*?)=(.*)", file("${path.module}/tmp/gpu.env")) : tuple[0] => tuple[1] }
 }
 
 #########################
@@ -129,6 +150,7 @@ data "template_file" "user_data" {
     cluster_config = count.index == 0 && var.join_cmd_url == "" ? local.master_cluster_config : local.worker_cluster_join
     package_install = count.index == 0 && var.join_cmd_url == "" ? local.package_install : "#!/bin/bash\n"
     ssh_authorized_keys = jsonencode(var.ssh_authorized_keys)
+    ssh_keys = jsonencode(var.ssh_keys)
   }
 }
 
@@ -183,5 +205,10 @@ resource "libvirt_domain" "domain-vm" {
     type        = "spice"
     listen_type = "address"
     autoport    = true
+  }
+  # If we found a GPU and we want a GPU node, go ahead and transform the output to pass through the PCI bus
+  # requires io_mmu, virtio binding, and other stuff to make GPU passthrough. TODO vGPU
+  xml {
+    xslt = contains(var.gpu_nodes, count.index) && local.gpu_map.domain != "" ? chomp(templatefile("templates/gpu.xslt", local.gpu_map)) : null
   }
 }

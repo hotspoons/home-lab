@@ -13,6 +13,8 @@ START_IP=${start_ip}
 END_IP=${end_ip}
 VIP_IP=${vip_ip}
 GITLAB_IP=${gitlab_ip}
+GITLAB_HELMCHART_VERSION=${gitlab_helmchart_version}
+GITHUB_PAT=${github_pat}
 SETUP_VIP_LB=${setup_vip_lb}
 SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
 SETUP_TLS_SECRETS=${setup_tls_secrets}
@@ -21,6 +23,7 @@ SETUP_GITLAB=${setup_gitlab}
 SETUP_PIHOLE_DNS=${setup_pihole_dns}
 SETUP_DEV_TOOLS=${setup_dev_tools}
 SETUP_WASM=${setup_wasm}
+SETUP_GPU_OPERATOR=${setup_gpu_operator}
 
 KUBE_VIP_URL=https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
 KUBE_VIP_RBAC_URL=https://kube-vip.io/manifests/rbac.yaml
@@ -177,14 +180,33 @@ spec:
     kind: ClusterIssuer
 EOF
 
-  if [[ -d "$MANIFEST_FOLDER/cert-manager" ]]; then
-    for manifest in $MANIFEST_FOLDER/cert-manager/*.yaml; do
-      kubectl apply -f $manifest
-    done
-  fi
+fi
+
+if [[ -d "$MANIFEST_FOLDER/cert-manager" ]]; then
+  for manifest in $MANIFEST_FOLDER/cert-manager/*.yaml; do
+    kubectl apply -f $manifest
+  done
+fi
 
 fi
 
+################################################
+## GitHub personal access token                #
+################################################\
+if [[ -n "$GITHUB_PAT" ]]; then
+
+kubectl create secret generic github-pat \
+  --from-literal personal_access_token="$GITHUB_PAT"
+
+cat << EOF | kubectl apply -f -
+kind: Secret
+type: kubernetes.io/dockerconfigjson
+apiVersion: v1
+metadata:
+  name: dockerconfigjson-github-com
+stringData:
+  .dockerconfigjson: {"auths":{"docker.pkg.github.com":{"auth":"$(kubectl get secrets github-pat --template={{.data.personal_access_token}})"}}}
+EOF
 
 fi
 
@@ -338,6 +360,7 @@ if [[ -n "$INGRESS_CERT_ARG" ]]; then
 
   helm upgrade --install gitlab gitlab/gitlab \
     --timeout 1800s \
+    --version $GITLAB_HELMCHART_VERSION \
     --set global.hosts.domain=$DOMAIN \
     --set global.edition=ce \
     --set global.hosts.externalIP=$GITLAB_IP \
@@ -358,6 +381,7 @@ else
 # If we don't have a cert from either CloudFlare or self-provided, use the default self-signed self-managed cert manager instead
   helm upgrade --install gitlab gitlab/gitlab \
     --timeout 1800s \
+    --version $GITLAB_HELMCHART_VERSION \
     --set global.hosts.domain=$DOMAIN \
     --set global.edition=ce \
     --set global.hosts.externalIP=$GITLAB_IP \
@@ -381,6 +405,9 @@ kubectl replace -f /tmp/ingress.yaml
 GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode)
 echo "GitLab root password: $GITLAB_ROOT_PASSWORD"
 
+# Backup GitLab daily
+echo "0 0 * * * /usr/bin/backup-gitlab" >> /etc/crontab
+
 fi
 
 ### debug distroless container example!: 
@@ -391,7 +418,7 @@ fi
 ## Dev tools, wasm shim                        #
 ################################################
 
-if [[ -n "$SETUP_DEV_TOOLS" || -n "$SETUP_WASM" ]]; then
+if [[ -n "$SETUP_DEV_TOOLS" ]]; then
   cd /tmp
   dnf group install -y "Development Tools"
   wget $GO_URL
@@ -402,11 +429,25 @@ if [[ -n "$SETUP_DEV_TOOLS" || -n "$SETUP_WASM" ]]; then
   source "$HOME/.cargo/env"
   source /etc/profile
 
-  if [[ -n "$SETUP_WASM" ]]; then
+fi
 
-  git clone https://github.com/deislabs/containerd-wasm-shims.git
-  cd containerd-wasm-shims/
-  make
+if [[ -n "$SETUP_WASM" ]]; then
 
-  fi
+GITHUB_AUTH=""
+
+fi
+
+if [[ -n "$SETUP_GPU_OPERATOR" ]]; then
+
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia \
+   && helm repo update
+
+helm install --generate-name \
+     -n gpu-operator --create-namespace \
+     nvidia/gpu-operator \
+     --set driver.enabled=false \
+    --set toolkit.enabled=false \
+    --set validator.driver.env[0].name=DISABLE_DEV_CHAR_SYMLINK_CREATION \
+    --set-string validator.driver.env[0].value=true
+
 fi

@@ -46,6 +46,18 @@ variable "network_bridge" {
     default = "br0"
 }
 
+variable "hp_storage_path" {
+    description = "Path to a folder where high performance block storage files will reside (empty for no high performance block storage)"
+    type = string
+    default = ""
+}
+
+variable "gpu_nodes" {
+    description = "0-indexed list of nodes for which you wish to bind GPUs, currently only 1 supported though"
+    type = list
+    default = []
+}
+
 variable "domain" {
     description = "A domain that will be used as the top-level domain for all deployments"
     type = string
@@ -89,6 +101,11 @@ variable "cert_private_key" {
     default = ""
 }
 
+variable "ssh_keys" {
+    description = "A map of types (rsa_private, rsa_public, dsa_private, dsa_public, ed25519_private, ed25519_public) ssh keys to be installed on the new VM. Should be public/private pairs"
+    type = map
+    default = {}
+}
 variable "ssh_authorized_keys" {
     description = "A list of ssh authorized keys to be installed on the new VM"
     type = list(string)
@@ -172,8 +189,18 @@ variable containerd_version {
 }
 
 variable helm_version {
-    description = "The version of helm you wish to target, e.g. 3.9.0"
+    description = "The version of helm you wish to target, default: 3.9.0"
     default = "3.12.3"
+}
+
+variable kubernetes_version {
+    description = "The version of Kubernetes you wish to target, default: 1.28.2"
+    default = "1.28.2"
+}
+
+variable gitlab_helmchart_version {
+    description = "The version of gitlab heml chart you wish to target, default: 7.4.1"
+    default = "7.4.1"
 }
 
 variable external_dns_ip {
@@ -190,6 +217,12 @@ variable external_dns_suffix {
 
 variable gitlab_ip {
     description = "The IP address for the GitLab load balancer to be deployed to, e.g. 192.168.1.2"
+    type = string
+    default = ""
+}
+
+variable github_pat {
+    description = "GitHub username and personal access token, required to pull images from ghcr.io, seperated with a colon"
     type = string
     default = ""
 }

@@ -1,12 +1,13 @@
 # VM setup
 
-storage_pool_path       = "/tmp/vms/k8s"
+storage_pool_path       = "/media/nvme/vms/k8s"
 image_path              = "/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
 remote_host             = "qemu+ssh://file-server.lan"
 compute_name            = "rocky-k8s-hosts"
 memory                  = "8192"
 instance_count          = 3
 cpu_cores               = 8
+gpu_nodes               = [1]
 network_bridge          = "ovirtmgmt"
 root_password           = "changeme"
 domain                  = "siomporas.com"
@@ -31,9 +32,12 @@ base_arch               = "x86_64"
 aarch                   = "amd64"
 containerd_version      = "1.6.24-3.1.el8"
 helm_version            = "3.12.3"
+gitlab_helmchart_version= "7.4.1"
+kubernetes_version      = "1.28.2"
 external_dns_ip         = "192.168.1.201"
 external_dns_suffix     = ""
 gitlab_ip               = "192.168.1.220"
+github_pat              ="username:ghp_...."
 workloads_on_control_plane = false
 setup_vip_lb            = true
 setup_nfs_provisioner   = true
@@ -47,3 +51,8 @@ setup_wasm              = false
 ssh_authorized_keys     = [
     "ssh-rsa ...= root@vm-host.siomporas.com"
     ]
+# cat ~/.ssh/id_rsa | awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' | jq -R
+ssh_keys                = {
+    "ed25519_private"   = "-----BEGIN OPENSSH PRIVATE KEY-----\\nb3Bl..."
+    "ed25519_public"    = "ssh-rsa AAAAB3NzaC1yc2EAAA...."
+}

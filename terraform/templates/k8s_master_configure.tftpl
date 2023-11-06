@@ -5,8 +5,7 @@ DOMAIN=${domain}
 WORKLOADS_ON_CONTROL_PLANE=${workloads_on_control_plane}
 EXTERNAL_DNS_IP=${external_dns_ip}
 EXTERNAL_DNS_SUFFIX=${external_dns_suffix}
-
-KUBERNETES_VERSION=v1.28.2
+KUBERNETES_VERSION=${kubernetes_version}
 
 ### A lot of this is based on this article: https://www.linuxtechi.com/install-kubernetes-cluster-on-rocky-linux/
 #Kubernetes utilities setup for persistent volumes, dashboard, and metal load balancer
@@ -35,6 +34,7 @@ firewall-cmd --reload
 ## TODO - Firewall rules prevent kube-vip from operating, need to figure out which ports are needed
 ## for now we just disable to save frustration
 systemctl stop firewalld.service
+systemctl disable firewalld.service
 
 
 ################################################
@@ -47,10 +47,12 @@ cat <<EOF > /tmp/kubeadm-config.yaml
 kind: ClusterConfiguration
 apiVersion: kubeadm.k8s.io/v1beta3
 kubernetesVersion: $KUBERNETES_VERSION
+networking:
+  podSubnet: "10.244.0.0/16" # --pod-network-cidr
 ---
 kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
-cgroupDriver: cgroupfs
+cgroupDriver: systemd
 resolvConf: $RESOLV_CONF_LOCATION
 EOF
 
@@ -59,7 +61,15 @@ mkdir -p /root/.kube
 yes | cp /etc/kubernetes/admin.conf /root/.kube/config
 chown $(id -u):$(id -g) /root/.kube/config
 export KUBECONFIG=/etc/kubernetes/admin.conf
-kubectl apply -f $CALICO_URL
+
+cd /tmp
+
+#wget $CALICO_URL
+#cat calico.yaml | yq 'select(.spec.template.spec.containers[0].name == "calico-node").spec.template.spec.containers[0].env += {"name": "IP_AUTODETECTION_METHOD", "value": "interface=eth0"}' > calico-modified.yaml
+#kubectl apply -f calico-modified.yaml
+
+kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+
 systemctl restart containerd.service
 
 if [[ -n "$WORKLOADS_ON_CONTROL_PLANE" ]]; then

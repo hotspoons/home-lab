@@ -16,7 +16,7 @@ environment variables with the prefix `TF_VAR_` which will override your `terraf
 cd /tmp
 export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
 # How large you want each compute node's disk to be
-export INSTANCE_DISK_SIZE=50G
+export INSTANCE_DISK_SIZE=200G
 # Where to put the storage pool for the VMs
 export TF_VAR_storage_pool_path=/tmp/vms/k8s
 # Where the base EL8 image for your VMs will reside. This must be LVM, and will be downloaded below
