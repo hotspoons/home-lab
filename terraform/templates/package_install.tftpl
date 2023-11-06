@@ -406,7 +406,7 @@ GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -o
 echo "GitLab root password: $GITLAB_ROOT_PASSWORD"
 
 # Backup GitLab daily
-echo "0 0 * * * /usr/bin/backup-gitlab" >> /etc/crontab
+ ln -s /usr/bin/backup-gitlab /etc/cron.daily/
 
 fi
 

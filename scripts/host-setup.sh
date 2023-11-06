@@ -87,8 +87,7 @@ echo "#!/bin/bash" >> /usr/bin/backup-lab
 echo "rclone copy /nfs/exports/kubernetes/default-gitlab-minio-pvc-f774a2be-48d4-473a-a86b-fdf511b020c0/gitlab-backups/ \\"  >> /usr/bin/backup-lab
 echo "    'Google Drive:'/gitlab-backups/ " >> /usr/bin/backup-lab
 chmod +x  >> /usr/bin/backup-lab
-
-echo "0 1 * * * /usr/bin/backup-lab" >> /etc/crontab
+ln -s /usr/bin/backup-lab /etc/cron.daily/
 # See https://cloud.google.com/compute/docs/gpus/grid-drivers-table
 
 #mkdir /tmp/nvidia-driver && cd /tmp/nvidia-driver
