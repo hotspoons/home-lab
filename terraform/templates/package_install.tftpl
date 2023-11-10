@@ -16,6 +16,7 @@ GITLAB_IP=${gitlab_ip}
 GITLAB_HELMCHART_VERSION=${gitlab_helmchart_version}
 GITHUB_PAT=${github_pat}
 GITLAB_PAT=${gitlab_pat}
+GITLAB_AGENT_TOKEN=${gitlab_agent_token}
 SETUP_VIP_LB=${setup_vip_lb}
 SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
 SETUP_TLS_SECRETS=${setup_tls_secrets}
@@ -210,12 +211,21 @@ stringData:
 EOF
 
 fi
+
 if [[ -n "$GITLAB_PAT" ]]; then
 
 kubectl create secret generic gitlab-pat \
   --from-literal personal_access_token="$GITLAB_PAT"
 
 fi
+
+if [[ -n "$GITLAB_AGENT_TOKEN" ]]; then
+
+kubectl create secret generic gitlab-agent-token \
+  --from-literal token="$GITLAB_AGENT_TOKEN"
+
+fi
+
 
 
 ################################################
@@ -415,7 +425,6 @@ echo "GitLab root password: $GITLAB_ROOT_PASSWORD"
 
 # Backup GitLab daily
  ln -s /usr/bin/backup-gitlab /etc/cron.daily/
-
 fi
 
 ### debug distroless container example!: 
