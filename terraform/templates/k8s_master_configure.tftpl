@@ -210,5 +210,8 @@ echo "kubectl scale deploy -lapp=webservice,release=gitlab -n default --replicas
 echo "kubectl scale deploy -lapp=prometheus,release=gitlab -n default --replicas=\$PROMETHEUS_N_PODS" >> /usr/bin/restore-gitlab
 chmod +x /usr/bin/restore-gitlab
  
-echo '#!/bin/bash' >> /usr/bin/etcd-backup
->>
+# Utility to clone all repos in the first group, useful for remote dev
+echo "#!/bin/bash" >> /usr/bin/clone-gitlab-repos
+echo "mkdir -p /opt/dev && cd /opt/dev" >> /usr/bin/clone-gitlab-repos
+echo "for repo in \$(curl -s https://gitlab.$DOMAIN/api/v4/groups/3 | jq -r '.projects[].ssh_url_to_repo'); do git clone \$repo; done;" >> /usr/bin/clone-gitlab-repos
+chmod +x /usr/bin/clone-gitlab-repos
