@@ -219,7 +219,7 @@ echo "kubectl scale deploy -lapp=sidekiq,release=gitlab -n default --replicas=\$
 echo "kubectl scale deploy -lapp=webservice,release=gitlab -n default --replicas=\$GITLAB_WS_N_PODS" >> /usr/bin/restore-gitlab
 echo "kubectl scale deploy -lapp=prometheus,release=gitlab -n default --replicas=\$PROMETHEUS_N_PODS" >> /usr/bin/restore-gitlab
 echo "if [[ -n \"\$(gitlab-agent-token)\" ]]; then" >> /usr/bin/restore-gitlab
-echo "helm upgrade --install k8sagent gitlab/gitlab-agent --namespace default \\" >> /usr/bin/restore-gitlab
+echo "helm upgrade --install k8s-agent gitlab/gitlab-agent --namespace default \\" >> /usr/bin/restore-gitlab
 echo "  --set image.tag=\$GITLAB_VERSION --set config.token=\$(gitlab-agent-token) --set config.kasAddress=wss://kas.$DOMAIN \\" >> /usr/bin/restore-gitlab
 echo "  --set serviceAccount.create=false --set serviceAccount.name=gitlab-gitlab-runner \\" >> /usr/bin/restore-gitlab
 echo "fi" >> /usr/bin/restore-gitlab
