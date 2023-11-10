@@ -206,7 +206,8 @@ chmod +x /usr/bin/gitlab-agent-token
 
 echo "#!/bin/bash" >> /usr/bin/restore-gitlab
 echo "if [[ -z \"\$1\" ]]; then echo \"You must provide the timestamp of the snapshot to restore in the object bucket.\" && exit 1; fi" >> /usr/bin/restore-gitlab
-echo "GITLAB_VERSION=v\$(curl --header \"PRIVATE-TOKEN: \$(gitlab-pat)\" https://gitlab.$DOMAIN/api/v4/version | jq --raw-output  '.version')" >> /usr/bin/restore-gitlab
+#echo "GITLAB_VERSION=v\$(curl --header \"PRIVATE-TOKEN: \$(gitlab-pat)\" https://gitlab.$DOMAIN/api/v4/version | jq --raw-output  '.version')" >> /usr/bin/restore-gitlab
+echo "GITLAB_VERSION=v16.4.0"  >> /usr/bin/restore-gitlab
 echo "SIDEKIQ_N_PODS=\$(kubectl get deploy -n default -lapp=sidekiq,release=gitlab -o jsonpath='{.items[].spec.replicas}')" >> /usr/bin/restore-gitlab
 echo "GITLAB_WS_N_PODS=\$(kubectl get deploy -n default -lapp=webservice,release=gitlab -o jsonpath='{.items[].spec.replicas}')" >> /usr/bin/restore-gitlab
 echo "PROMETHEUS_N_PODS=\$(kubectl get deploy -n default -lapp=prometheus,release=gitlab -o jsonpath='{.items[].spec.replicas}')" >> /usr/bin/restore-gitlab
@@ -218,8 +219,9 @@ echo "kubectl scale deploy -lapp=sidekiq,release=gitlab -n default --replicas=\$
 echo "kubectl scale deploy -lapp=webservice,release=gitlab -n default --replicas=\$GITLAB_WS_N_PODS" >> /usr/bin/restore-gitlab
 echo "kubectl scale deploy -lapp=prometheus,release=gitlab -n default --replicas=\$PROMETHEUS_N_PODS" >> /usr/bin/restore-gitlab
 echo "if [[ -n \"\$(gitlab-agent-token)\" ]]; then" >> /usr/bin/restore-gitlab
-echo "helm upgrade --install k8sagent gitlab/gitlab-agent --namespace gitlab-agent-k8sagent --create-namespace \\" >> /usr/bin/restore-gitlab
-echo "  --set image.tag=\$GITLAB_VERSION --set config.token=\$(gitlab-agent-token) --set config.kasAddress=wss://kas.$DOMAIN" >> /usr/bin/restore-gitlab
+echo "helm upgrade --install k8sagent gitlab/gitlab-agent --namespace default \\" >> /usr/bin/restore-gitlab
+echo "  --set image.tag=\$GITLAB_VERSION --set config.token=\$(gitlab-agent-token) --set config.kasAddress=wss://kas.$DOMAIN \\" >> /usr/bin/restore-gitlab
+echo "  --set serviceAccount.create=false --set serviceAccount.name=gitlab-gitlab-runner \\" >> /usr/bin/restore-gitlab
 echo "fi" >> /usr/bin/restore-gitlab
 
 chmod +x /usr/bin/restore-gitlab
