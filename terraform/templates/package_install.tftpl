@@ -15,6 +15,7 @@ VIP_IP=${vip_ip}
 GITLAB_IP=${gitlab_ip}
 GITLAB_HELMCHART_VERSION=${gitlab_helmchart_version}
 GITHUB_PAT=${github_pat}
+GITLAB_PAT=${gitlab_pat}
 SETUP_VIP_LB=${setup_vip_lb}
 SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
 SETUP_TLS_SECRETS=${setup_tls_secrets}
@@ -191,7 +192,7 @@ fi
 fi
 
 ################################################
-## GitHub personal access token                #
+## GitHub and GitLab personal access token     #
 ################################################\
 if [[ -n "$GITHUB_PAT" ]]; then
 
@@ -209,6 +210,13 @@ stringData:
 EOF
 
 fi
+if [[ -n "$GITLAB_PAT" ]]; then
+
+kubectl create secret generic gitlab-pat \
+  --from-literal personal_access_token="$GITLAB_PAT"
+
+fi
+
 
 ################################################
 ## Pi-hole external DNS                        #

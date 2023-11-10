@@ -227,6 +227,12 @@ variable github_pat {
     default = ""
 }
 
+variable gitlab_pat {
+    description = "GitLab personal access token, for restoring automations between installs"
+    type = string
+    default = ""
+}
+
 variable workloads_on_control_plane {
     description = "Use control plane as a worker node"
     type = bool

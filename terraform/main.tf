@@ -80,6 +80,7 @@ locals{
     pi_hole_server: var.pi_hole_server,
     pi_hole_password: var.pi_hole_password,
     github_pat: var.github_pat,
+    gitlab_pat: var.gitlab_pat,
     gitlab_helmchart_version: var.gitlab_helmchart_version,
     setup_vip_lb: var.setup_vip_lb ? "true" : "",
     setup_nfs_provisioner: var.setup_nfs_provisioner ? "true" : "",

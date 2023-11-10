@@ -38,6 +38,7 @@ external_dns_ip         = "192.168.1.201"
 external_dns_suffix     = ""
 gitlab_ip               = "192.168.1.220"
 github_pat              ="username:ghp_...."
+gitlab_pat              = "glpat-..."
 workloads_on_control_plane = false
 setup_vip_lb            = true
 setup_nfs_provisioner   = true
