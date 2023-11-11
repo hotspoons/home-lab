@@ -5,6 +5,7 @@ image_path              = "/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
 remote_host             = "qemu+ssh://file-server.lan"
 compute_name            = "rocky-k8s-hosts"
 memory                  = "8192"
+memory_per_node         = ["4096", "8096", "12288"]
 instance_count          = 3
 cpu_cores               = 8
 gpu_nodes               = [1]
