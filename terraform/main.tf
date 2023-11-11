@@ -165,8 +165,8 @@ resource "libvirt_cloudinit_disk" "commoninit" {
 resource "libvirt_domain" "domain-vm" {
   count  = var.instance_count
   name   = "${var.compute_name}-${count.index}"
-  memory = length(var.memory_per_node) >= ${count.index} ? var.memory_per_node[count.index] : var.memory
-  vcpu   = length(var.cpu_cores_per_node) >= ${count.index} ? var.cpu_cores_per_node[count.index] : var.cpu_cores
+  memory = length(var.memory_per_node) > count.index ? var.memory_per_node[count.index] : var.memory
+  vcpu   = length(var.cpu_cores_per_node) > count.index ? var.cpu_cores_per_node[count.index] : var.cpu_cores
   cpu {
     mode = "host-passthrough"
   }
