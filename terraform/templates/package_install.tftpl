@@ -104,6 +104,39 @@ if [[ -d "$MANIFEST_FOLDER/pvs" ]]; then
   done
 fi
 
+# Add Harbor caching container registry/proxy
+
+cat << EOF > /tmp/harbor.yaml
+externalURL: https://harbor.$DOMAIN
+exposureType: ingress
+adminPassword: changeme
+commonLabels:
+  goharbor.io/harbor-container-webhook-disable: 'true'
+ingress:
+  core:
+    hostname: harbor.$DOMAIN   
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      size: 100Gi
+      accessModes: 
+        - ReadWriteOnce
+postgresql:
+  architecture: replication
+  readReplicas:
+    extendedConfiguration: |
+      max_connections = 1024
+  primary:       
+    extendedConfiguration: |
+      max_connections = 1024
+EOF
+
+
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm install harbor bitnami/harbor -f /tmp/harbor.yaml
+
+
 fi
 
 ################################################
