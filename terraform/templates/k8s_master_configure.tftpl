@@ -232,4 +232,8 @@ echo "mkdir -p /opt/dev && cd /opt/dev" >> /usr/bin/clone-gitlab-repos
 echo "for repo in \$(curl -s https://gitlab.$DOMAIN/api/v4/groups/3 | jq -r '.projects[].ssh_url_to_repo'); do git clone \$repo; done;" >> /usr/bin/clone-gitlab-repos
 chmod +x /usr/bin/clone-gitlab-repos
 
-echo "
+echo "#!/bin/bash" >> /usr/bin/kube-config-gitlab
+echo "curl --request POST --header \"PRIVATE-TOKEN: \$(gitlab-pat)\" https://gitlab.$DOMAIN/api/v4/admin/ci/variables \\" >> /usr/bin/kube-config-gitlab
+echo "  --form \"key=KUBECONFIG_BASE64\" --form \"value=\$(cat ~/.kube/config | base64 -w 0)\"" >> /usr/bin/kube-config-gitlab
+
+chmod +x /usr/bin/kube-config-gitlab
