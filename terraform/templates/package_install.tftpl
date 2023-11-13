@@ -416,6 +416,27 @@ fi
 
 
 ################################################
+## Setup Docker registry for cluster          ##
+################################################
+
+if [[ -n "$SETUP_CERT_MANAGER" && -n "$SETUP_VIP_LB" && -n "$SETUP_GITLAB" ]]; then
+
+wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/docs/examples/docker-registry/deployment.yaml
+sed -ie '1,6d' deployment.yaml
+yq -i e ".metadata.namespace = \"default\"" deployment.yaml
+kubectl apply -f deployment.yaml
+
+wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/docs/examples/docker-registry/ingress-with-tls.yaml
+yq -i e ".spec.ingressClassName = \"gitlab-nginx\"" ingress-with-tls.yaml
+yq -i e ".metadata.namespace = \"default\"" ingress-with-tls.yaml
+yq -i e ".metadata.annotations.\"kubernetes.io/ingress.class\" = \"gitlab-nginx\"" ingress-with-tls.yaml
+yq -i e ".metadata.annotations.\"cert-manager.io/cluster-issuer\" = \"letsencrypt-issuer\"" ingress-with-tls.yaml
+yq -i e ".spec.tls.0.hosts.0 = \"container-registry.$DOMAIN\"" ingress-with-tls.yaml
+yq -i e ".spec.rules.0.host = \"container-registry.$DOMAIN\"" ingress-with-tls.yaml
+kubectl apply -f ingress-with-tls.yaml
+fi
+
+################################################
 ## Dev tools, wasm shim                        #
 ################################################
 
@@ -436,21 +457,6 @@ if [[ -n "$SETUP_WASM" ]]; then
 
 GITHUB_AUTH=""
 
-fi
-
-if [[ -n "$SETUP_HARBOR" ]]; then
-helm repo add harbor https://helm.goharbor.io
-
-cat << EOF > /tmp/harbor.yaml
-
-EOF
-
-helm install harbor harbor/harbor \
-  --set expose.type=ingress \
-  --set expose.tls.enabled=true \
-  --set expose.tls.certSource=auto \
-  --set expose.ingress.hosts.core=harbor.$DOMAIN \
-  --set expose.ingress.hosts.notary=notary.harbor.$DOMAIN 
 fi
 
 if [[ -n "$SETUP_GPU_OPERATOR" ]]; then
