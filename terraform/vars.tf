@@ -304,3 +304,8 @@ variable setup_wasm {
     type = bool
     default = false
 }
+variable setup_harbor {
+    description = "Setup harbor container registry"
+    type = bool
+    default = false  
+}
