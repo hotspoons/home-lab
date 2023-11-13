@@ -15,6 +15,8 @@ VIP_IP=${vip_ip}
 GITLAB_IP=${gitlab_ip}
 GITLAB_HELMCHART_VERSION=${gitlab_helmchart_version}
 GITHUB_PAT=${github_pat}
+GITLAB_PAT=${gitlab_pat}
+GITLAB_AGENT_TOKEN=${gitlab_agent_token}
 SETUP_VIP_LB=${setup_vip_lb}
 SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
 SETUP_TLS_SECRETS=${setup_tls_secrets}
@@ -24,7 +26,7 @@ SETUP_PIHOLE_DNS=${setup_pihole_dns}
 SETUP_DEV_TOOLS=${setup_dev_tools}
 SETUP_WASM=${setup_wasm}
 SETUP_GPU_OPERATOR=${setup_gpu_operator}
-SETUP_HARBOR=${setup_harbor}
+NVIDIA_DRIVER_VERSION=535.104.12
 
 KUBE_VIP_URL=https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
 KUBE_VIP_RBAC_URL=https://kube-vip.io/manifests/rbac.yaml
@@ -102,6 +104,39 @@ if [[ -d "$MANIFEST_FOLDER/pvs" ]]; then
     kubectl apply -f $manifest
   done
 fi
+
+# Add Harbor caching container registry/proxy
+
+cat << EOF > /tmp/harbor.yaml
+externalURL: https://harbor.$DOMAIN
+exposureType: ingress
+adminPassword: changeme
+commonLabels:
+  goharbor.io/harbor-container-webhook-disable: 'true'
+ingress:
+  core:
+    hostname: harbor.$DOMAIN   
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      size: 100Gi
+      accessModes: 
+        - ReadWriteOnce
+postgresql:
+  architecture: replication
+  readReplicas:
+    extendedConfiguration: |
+      max_connections = 1024
+  primary:       
+    extendedConfiguration: |
+      max_connections = 1024
+EOF
+
+
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm install harbor bitnami/harbor -f /tmp/harbor.yaml
+
 
 fi
 
@@ -192,7 +227,7 @@ fi
 fi
 
 ################################################
-## GitHub personal access token                #
+## GitHub and GitLab personal access token     #
 ################################################\
 if [[ -n "$GITHUB_PAT" ]]; then
 
@@ -210,6 +245,22 @@ stringData:
 EOF
 
 fi
+
+if [[ -n "$GITLAB_PAT" ]]; then
+
+kubectl create secret generic gitlab-pat \
+  --from-literal personal_access_token="$GITLAB_PAT"
+
+fi
+
+if [[ -n "$GITLAB_AGENT_TOKEN" ]]; then
+
+kubectl create secret generic gitlab-agent-token \
+  --from-literal token="$GITLAB_AGENT_TOKEN"
+
+fi
+
+
 
 ################################################
 ## Pi-hole external DNS                        #
@@ -407,8 +458,7 @@ GITLAB_ROOT_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -o
 echo "GitLab root password: $GITLAB_ROOT_PASSWORD"
 
 # Backup GitLab daily
-echo "0 0 * * * /usr/bin/backup-gitlab" >> /etc/crontab
-
+ ln -s /usr/bin/backup-gitlab /etc/cron.daily/
 fi
 
 ### debug distroless container example!: 
@@ -453,13 +503,13 @@ if [[ -n "$SETUP_DEV_TOOLS" ]]; then
 
 fi
 
-if [[ -n "$SETUP_WASM" ]]; then
-
-GITHUB_AUTH=""
-
-fi
 
 if [[ -n "$SETUP_GPU_OPERATOR" ]]; then
+
+docker run -itd --net=host --name nvidia-registry registry
+echo "FROM nvcr.io/nvidia/driver:$NVIDIA_DRIVER_VERSION-rhel8.8" >> Dockerfile.nvidia
+docker build -t $MASTER_HOSTNAME.$DOMAIN:5000/nvidia/driver:$NVIDIA_DRIVER_VERSION-rocky8.8 -f Dockerfile.nvidia .
+docker push $MASTER_HOSTNAME.$DOMAIN:5000/nvidia/driver:$NVIDIA_DRIVER_VERSION-rocky8.8
 
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia \
    && helm repo update
@@ -467,9 +517,48 @@ helm repo add nvidia https://helm.ngc.nvidia.com/nvidia \
 helm install --generate-name \
      -n gpu-operator --create-namespace \
      nvidia/gpu-operator \
-     --set driver.enabled=false \
-    --set toolkit.enabled=false \
-    --set validator.driver.env[0].name=DISABLE_DEV_CHAR_SYMLINK_CREATION \
-    --set-string validator.driver.env[0].value=true
+     --set driver.repository=$MASTER_HOSTNAME.$DOMAIN:5000/nvidia \
+     --set driver.version=$NVIDIA_DRIVER_VERSION 
+    #--set driver.enabled=false \
+    #--set toolkit.enabled=false \
+    #--set validator.driver.env[0].name=DISABLE_DEV_CHAR_SYMLINK_CREATION \
+
+
+fi
+
+if [[ -n "$SETUP_WASM" ]]; then
+
+helm install spin-containerd-shim-installer oci://ghcr.io/fermyon/charts/spin-containerd-shim-installer --version 0.8.0
+
+cat << EOF | kubectl apply -f -
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: wasmtime-spin
+handler: spin
+EOF
+
+
+cat << EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wasm-spin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wasm-spin
+  template:
+    metadata:
+      labels:
+        app: wasm-spin
+    spec:
+      runtimeClassName: wasmtime-spin
+      containers:
+        - name: spin-hello
+          image: ghcr.io/deislabs/containerd-wasm-shims/examples/spin-rust-hello:latest
+          command: ["/"]
+EOF
 
 fi

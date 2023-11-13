@@ -10,7 +10,6 @@ KUBERNETES_VERSION=${kubernetes_version}
 ### A lot of this is based on this article: https://www.linuxtechi.com/install-kubernetes-cluster-on-rocky-linux/
 #Kubernetes utilities setup for persistent volumes, dashboard, and metal load balancer
 DASHBOARD_URL=https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended.yaml
-CALICO_URL=https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
 RESOLV_CONF_LOCATION=/etc/k8s-resolv.conf
 
 ################################################
@@ -64,18 +63,11 @@ export KUBECONFIG=/etc/kubernetes/admin.conf
 
 cd /tmp
 
-#wget $CALICO_URL
-#cat calico.yaml | yq 'select(.spec.template.spec.containers[0].name == "calico-node").spec.template.spec.containers[0].env += {"name": "IP_AUTODETECTION_METHOD", "value": "interface=eth0"}' > calico-modified.yaml
-#kubectl apply -f calico-modified.yaml
-
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
-
 systemctl restart containerd.service
 
 if [[ -n "$WORKLOADS_ON_CONTROL_PLANE" ]]; then
-
   kubectl taint node $(hostname) node-role.kubernetes.io/control-plane:NoSchedule-
-
 fi
 
 kubectl get nodes
@@ -92,7 +84,6 @@ cd /tmp/join-cluster/
 
 openssl req -new -newkey rsa:4096 -nodes -keyout snakeoil.key -out snakeoil.csr -subj /C=US/ST=State/L=Locality/O=None/OU=None/CN=*.$DOMAIN
 openssl x509 -req -sha256 -days 365 -in snakeoil.csr -signkey snakeoil.key -out snakeoil.pem
-
 
 ###
 echo "from http.server import HTTPServer, SimpleHTTPRequestHandler" >> server.py
@@ -196,8 +187,18 @@ echo "kubectl exec \$(kubectl get pods -lrelease=gitlab,app=toolbox --no-headers
 chmod +x /usr/bin/backup-gitlab
  
 
+echo '#!/bin/bash' > /usr/bin/gitlab-pat
+echo 'kubectl get secrets gitlab-pat -o jsonpath="{.data.personal_access_token}" | base64 -d' >> /usr/bin/gitlab-pat
+chmod +x /usr/bin/gitlab-pat
+
+echo '#!/bin/bash' > /usr/bin/gitlab-agent-token
+echo 'kubectl get secrets gitlab-agent-token -o jsonpath="{.data.token}" | base64 -d' >> /usr/bin/gitlab-agent-token 
+chmod +x /usr/bin/gitlab-agent-token
+
 echo "#!/bin/bash" >> /usr/bin/restore-gitlab
 echo "if [[ -z \"\$1\" ]]; then echo \"You must provide the timestamp of the snapshot to restore in the object bucket.\" && exit 1; fi" >> /usr/bin/restore-gitlab
+#echo "GITLAB_VERSION=v\$(curl --header \"PRIVATE-TOKEN: \$(gitlab-pat)\" https://gitlab.$DOMAIN/api/v4/version | jq --raw-output  '.version')" >> /usr/bin/restore-gitlab
+echo "GITLAB_VERSION=v16.4.0"  >> /usr/bin/restore-gitlab
 echo "SIDEKIQ_N_PODS=\$(kubectl get deploy -n default -lapp=sidekiq,release=gitlab -o jsonpath='{.items[].spec.replicas}')" >> /usr/bin/restore-gitlab
 echo "GITLAB_WS_N_PODS=\$(kubectl get deploy -n default -lapp=webservice,release=gitlab -o jsonpath='{.items[].spec.replicas}')" >> /usr/bin/restore-gitlab
 echo "PROMETHEUS_N_PODS=\$(kubectl get deploy -n default -lapp=prometheus,release=gitlab -o jsonpath='{.items[].spec.replicas}')" >> /usr/bin/restore-gitlab
@@ -208,7 +209,22 @@ echo "kubectl exec \$(kubectl get pods -lrelease=gitlab,app=toolbox --no-headers
 echo "kubectl scale deploy -lapp=sidekiq,release=gitlab -n default --replicas=\$SIDEKIQ_N_PODS" >> /usr/bin/restore-gitlab
 echo "kubectl scale deploy -lapp=webservice,release=gitlab -n default --replicas=\$GITLAB_WS_N_PODS" >> /usr/bin/restore-gitlab
 echo "kubectl scale deploy -lapp=prometheus,release=gitlab -n default --replicas=\$PROMETHEUS_N_PODS" >> /usr/bin/restore-gitlab
+echo "if [[ -n \"\$(gitlab-agent-token)\" ]]; then" >> /usr/bin/restore-gitlab
+echo "helm upgrade --install k8s-agent gitlab/gitlab-agent --namespace default \\" >> /usr/bin/restore-gitlab
+echo "  --set image.tag=\$GITLAB_VERSION --set config.token=\$(gitlab-agent-token) --set config.kasAddress=wss://kas.$DOMAIN \\" >> /usr/bin/restore-gitlab
+echo "  --set serviceAccount.create=false --set serviceAccount.name=gitlab-gitlab-runner  " >> /usr/bin/restore-gitlab
+echo "fi" >> /usr/bin/restore-gitlab
+
 chmod +x /usr/bin/restore-gitlab
  
-echo '#!/bin/bash' >> /usr/bin/etcd-backup
->>
+# Utility to clone all repos in the first group, useful for remote dev
+echo "#!/bin/bash" >> /usr/bin/clone-gitlab-repos
+echo "mkdir -p /opt/dev && cd /opt/dev" >> /usr/bin/clone-gitlab-repos
+echo "for repo in \$(curl -s https://gitlab.$DOMAIN/api/v4/groups/3 | jq -r '.projects[].ssh_url_to_repo'); do git clone \$repo; done;" >> /usr/bin/clone-gitlab-repos
+chmod +x /usr/bin/clone-gitlab-repos
+
+echo "#!/bin/bash" >> /usr/bin/kube-config-gitlab
+echo "curl --request POST --header \"PRIVATE-TOKEN: \$(gitlab-pat)\" https://gitlab.$DOMAIN/api/v4/admin/ci/variables \\" >> /usr/bin/kube-config-gitlab
+echo "  --form \"key=KUBECONFIG_BASE64\" --form \"value=\$(cat ~/.kube/config | base64 -w 0)\"" >> /usr/bin/kube-config-gitlab
+
+chmod +x /usr/bin/kube-config-gitlab

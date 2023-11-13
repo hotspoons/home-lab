@@ -6,6 +6,7 @@ EL_VERSION=${el_version}
 CONTAINERD_VERSION=${containerd_version}
 HELM_VERSION=${helm_version}
 KUBERNETES_VERSION=${kubernetes_version}
+MASTER_HOSTNAME=${master_hostname}
 
 #Setup configuration
 DOCKER_REPO=https://download.docker.com/linux/centos/docker-ce.repo
@@ -56,6 +57,9 @@ swapoff -a
 ################################################
 ## Install Docker and Kubernetes              ##
 ################################################
+mkdir -p /etc/docker
+echo "{ \"insecure-registries\":[\"$MASTER_HOSTNAME.$DOMAIN:5000\"] } " > /etc/docker/daemon.json
+
 dnf config-manager --add-repo=$DOCKER_REPO
 dnf install -y $CONTAINER_IO_PKG
 dnf install docker-ce --nobest -y

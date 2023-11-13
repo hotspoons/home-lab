@@ -22,25 +22,19 @@ data "archive_file" "manifests" {
 resource "random_uuid" "salt" {
 }
 
-resource "null_resource" "gpu_info" {
-  triggers = {
-    always_run = timestamp()
-  }
-  provisioner "local-exec" {
-    command =  <<EOF
-export BASE_PATH=${path.module}
-${path.module}/../scripts/get-gpuinfo.sh
-    EOF
+data "external" "gpu_info" {
+  program = ["bash", "${path.module}/../scripts/get-gpuinfo.sh"]
+  query = {
   }
 }
 
 locals{
-  depends_on = [null_resource.gpu_info]
   join_cmd_salt = "${random_uuid.salt.result}"
   archive_file = "${data.archive_file.manifests.output_path}"
   master_install = jsonencode(chomp(templatefile("templates/k8s_master_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
+    master_hostname: "${var.compute_name}-0",
     containerd_version: var.containerd_version,
     helm_version: var.helm_version,
     kubernetes_version: var.kubernetes_version,
@@ -49,6 +43,7 @@ locals{
   worker_install = jsonencode(chomp(templatefile("templates/k8s_worker_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
+    master_hostname: "${var.compute_name}-0",
     containerd_version: var.containerd_version,
     helm_version: var.helm_version,
     kubernetes_version: var.kubernetes_version,
@@ -87,6 +82,8 @@ locals{
     pi_hole_server: var.pi_hole_server,
     pi_hole_password: var.pi_hole_password,
     github_pat: var.github_pat,
+    gitlab_pat: var.gitlab_pat,
+    gitlab_agent_token: var.gitlab_agent_token,
     gitlab_helmchart_version: var.gitlab_helmchart_version,
     setup_vip_lb: var.setup_vip_lb ? "true" : "",
     setup_nfs_provisioner: var.setup_nfs_provisioner ? "true" : "",
@@ -102,7 +99,7 @@ locals{
   cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
   full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")
   cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : jsonencode("")
-  gpu_map = { for tuple in regexall("(.*?)=(.*)", file("${path.module}/tmp/gpu.env")) : tuple[0] => tuple[1] }
+  gpu_map = data.external.gpu_info.result
 }
 
 #########################
@@ -171,8 +168,8 @@ resource "libvirt_cloudinit_disk" "commoninit" {
 resource "libvirt_domain" "domain-vm" {
   count  = var.instance_count
   name   = "${var.compute_name}-${count.index}"
-  memory = var.memory
-  vcpu   = var.cpu_cores
+  memory = length(var.memory_per_node) > count.index ? var.memory_per_node[count.index] : var.memory
+  vcpu   = length(var.cpu_cores_per_node) > count.index ? var.cpu_cores_per_node[count.index] : var.cpu_cores
   cpu {
     mode = "host-passthrough"
   }

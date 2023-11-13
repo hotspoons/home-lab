@@ -56,9 +56,12 @@ kubectl completion bash | sudo tee /etc/bash_completion.d/kubectl > /dev/null
 ## Install NVidia drivers if this node has a GPU ##
 ###################################################
 if [[ -n "$(lspci | grep -i NVIDIA | grep -i controller)" ]]; then
-dnf config-manager -y --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+
+echo "blacklist nouveau" >> /etc/modprobe.d/blacklist-nouveau.conf
+echo "options nouveau modeset=0" >> /etc/modprobe.d/blacklist-nouveau.conf
+dracut --force
+
 dnf install -y kernel-devel-$(uname -r) kernel-headers-$(uname -r)
-dnf install -y nvidia-driver cuda-driver cuda-toolkit
 curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | 
   tee /etc/yum.repos.d/nvidia-container-toolkit.repo
 
@@ -66,7 +69,6 @@ mv /etc/containerd/config.toml /etc/containerd/config.toml.orig
 containerd config default > /etc/containerd/config.toml
 
 dnf install -y nvidia-container-toolkit
-#nvidia-ctk runtime configure --runtime=docker
 nvidia-ctk runtime configure --runtime=containerd
 
 sed -i "s/SystemdCgroup = false/SystemdCgroup = true/g" /etc/containerd/config.toml

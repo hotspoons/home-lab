@@ -34,10 +34,22 @@ variable "memory" {
     default = "4096"
 }
 
+variable "memory_per_node" {
+    description = "List of memory per node for which you wish to override the primary memory setting (optional)"
+    type = list
+    default = []
+}
+
 variable "cpu_cores" {
     description = "Number of CPU cores, defaults to 4"
     type = number
     default = 4
+}
+
+variable "cpu_cores_per_node" {
+    description = "List of CPU cores per node for which you wish to override the primary CPU setting (optional)"
+    type = list
+    default = []
 }
 
 variable "network_bridge" {
@@ -223,6 +235,18 @@ variable gitlab_ip {
 
 variable github_pat {
     description = "GitHub username and personal access token, required to pull images from ghcr.io, seperated with a colon"
+    type = string
+    default = ""
+}
+
+variable gitlab_pat {
+    description = "GitLab personal access token, for restoring automations between installs"
+    type = string
+    default = ""
+}
+
+variable gitlab_agent_token {
+    description = "GitLab agent token, for restoring automations between installs"
     type = string
     default = ""
 }
