@@ -506,10 +506,19 @@ fi
 
 if [[ -n "$SETUP_GPU_OPERATOR" ]]; then
 
-docker run -itd --net=host --name nvidia-registry registry
-echo "FROM nvcr.io/nvidia/driver:$NVIDIA_DRIVER_VERSION-rhel8.8" >> Dockerfile.nvidia
-docker build -t $MASTER_HOSTNAME.$DOMAIN:5000/nvidia/driver:$NVIDIA_DRIVER_VERSION-rocky8.8 -f Dockerfile.nvidia .
-docker push $MASTER_HOSTNAME.$DOMAIN:5000/nvidia/driver:$NVIDIA_DRIVER_VERSION-rocky8.8
+git clone https://github.com/awslife/nvidia-driver.git
+cd nvidia-driver
+export OS_NAME=rocky
+export OS_VERSION=8.8
+export CUDA_VERSION=12.2.2
+export DRIVER_VERSION=535.104.12
+export DONKEY_VERSION=v1.1.0
+export OUT_IMAGE_NAME=container-registry.$DOMAIN/nvidia/driver
+sed -i "s~docker.io/awslife/nvidia/driver~$OUT_IMAGE_NAME~g" Makefile
+
+make build
+
+docker push container-registry.$DOMAIN/nvidia/driver:$NVIDIA_DRIVER_VERSION-rocky8.8
 
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia \
    && helm repo update
@@ -517,8 +526,8 @@ helm repo add nvidia https://helm.ngc.nvidia.com/nvidia \
 helm install --generate-name \
      -n gpu-operator --create-namespace \
      nvidia/gpu-operator \
-     --set driver.repository=$MASTER_HOSTNAME.$DOMAIN:5000/nvidia \
-     --set driver.version=$NVIDIA_DRIVER_VERSION 
+     --set driver.repository=container-registry.$DOMAIN/nvidia \
+     --set driver.version=$NVIDIA_DRIVER_VERSION
     #--set driver.enabled=false \
     #--set toolkit.enabled=false \
     #--set validator.driver.env[0].name=DISABLE_DEV_CHAR_SYMLINK_CREATION \
