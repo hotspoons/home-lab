@@ -92,6 +92,8 @@ wget $ETCD_URL
 tar -xvf etcd-v3.5.9-linux-amd64.tar.gz
 mv etcd-v3.5.9-linux-amd64/etc* /usr/bin/
 
+crictl config --set runtime-endpoint=unix:///run/containerd/containerd.sock --set image-endpoint=unix:///run/containerd/containerd.sock
+
 ################################################
 ## Initialize helm and minio CLI              ##
 ################################################

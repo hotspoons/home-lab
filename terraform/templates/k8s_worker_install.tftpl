@@ -82,6 +82,8 @@ dnf install -y terraform vault kubelet kubeadm kubectl --disableexcludes=kuberne
 systemctl enable kubelet
 systemctl start kubelet
 
+crictl config --set runtime-endpoint=unix:///run/containerd/containerd.sock --set image-endpoint=unix:///run/containerd/containerd.sock
+
 ################################################
 ## Initialize helm and minio CLI              ##
 ################################################
