@@ -41,6 +41,7 @@ locals{
   master_install = jsonencode(chomp(templatefile("templates/k8s_master_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
+    master_hostname: "${var.compute_name}-0",
     containerd_version: var.containerd_version,
     helm_version: var.helm_version,
     kubernetes_version: var.kubernetes_version,
@@ -49,6 +50,7 @@ locals{
   worker_install = jsonencode(chomp(templatefile("templates/k8s_worker_install.tftpl", {
     base_arch: var.base_arch,
     aarch: var.aarch,
+    master_hostname: "${var.compute_name}-0",
     containerd_version: var.containerd_version,
     helm_version: var.helm_version,
     kubernetes_version: var.kubernetes_version,
