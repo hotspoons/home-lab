@@ -82,6 +82,7 @@ locals{
     pi_hole_server: var.pi_hole_server,
     pi_hole_password: var.pi_hole_password,
     github_pat: var.github_pat,
+    github_sync_pat: var.github_sync_pat,
     gitlab_pat: var.gitlab_pat,
     gitlab_agent_token: var.gitlab_agent_token,
     gitlab_helmchart_version: var.gitlab_helmchart_version,

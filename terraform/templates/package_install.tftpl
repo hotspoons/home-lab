@@ -16,6 +16,7 @@ GITLAB_IP=${gitlab_ip}
 GITLAB_HELMCHART_VERSION=${gitlab_helmchart_version}
 GITHUB_PAT=${github_pat}
 GITLAB_PAT=${gitlab_pat}
+GITHUB_SYNC_PAT=${github_sync_pat}
 GITLAB_AGENT_TOKEN=${gitlab_agent_token}
 SETUP_VIP_LB=${setup_vip_lb}
 SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
@@ -250,6 +251,11 @@ if [[ -n "$GITLAB_PAT" ]]; then
 
 kubectl create secret generic gitlab-pat \
   --from-literal personal_access_token="$GITLAB_PAT"
+fi
+
+if [[ -n "$GITHUB_SYNC_PAT" ]]; then
+kubectl create secret generic github-sync-pat \
+  --from-literal github_sync_pat="$GITHUB_SYNC_PAT"
 
 fi
 

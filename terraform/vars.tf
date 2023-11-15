@@ -239,6 +239,12 @@ variable github_pat {
     default = ""
 }
 
+variable github_sync_pat {
+    description = "GitHub repository personal access token, used by GitLab to push to GitHub repositories"
+    type = string
+    default = ""
+}
+
 variable gitlab_pat {
     description = "GitLab personal access token, for restoring automations between installs"
     type = string

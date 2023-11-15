@@ -39,6 +39,7 @@ external_dns_ip         = "192.168.1.201"
 external_dns_suffix     = ""
 gitlab_ip               = "192.168.1.220"
 github_pat              ="username:ghp_...."
+github_sync_pat         ="glpat--..."
 gitlab_pat              = "glpat-..."
 gitlab_agent_token      = "glagent-z..."
 workloads_on_control_plane = false
