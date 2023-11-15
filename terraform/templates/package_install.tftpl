@@ -512,17 +512,11 @@ fi
 
 if [[ -n "$SETUP_GPU_OPERATOR" ]]; then
 
-git clone https://github.com/awslife/nvidia-driver.git
-cd nvidia-driver
-export OS_NAME=rocky
-export OS_VERSION=8.8
-export CUDA_VERSION=12.2.2
-export DRIVER_VERSION=535.104.12
-export DONKEY_VERSION=v1.1.0
-export OUT_IMAGE_NAME=container-registry.$DOMAIN/nvidia/driver
-sed -i "s~docker.io/awslife/nvidia/driver~$OUT_IMAGE_NAME~g" Makefile
-
-make build
+git clone https://$GITHUB_SYNC_PAT@github.com/hotspoons/NVIDIA-driver-container.git 
+cd NVIDIA-driver-container
+export CONTAINER_REGISTRY=container-registry.$DOMAIN
+export NVIDIA_DRIVER_VERSION=$NVIDIA_DRIVER_VERSION
+./build.sh
 
 docker push container-registry.$DOMAIN/nvidia/driver:$NVIDIA_DRIVER_VERSION-rocky8.8
 
@@ -537,7 +531,6 @@ helm install --generate-name \
     #--set driver.enabled=false \
     #--set toolkit.enabled=false \
     #--set validator.driver.env[0].name=DISABLE_DEV_CHAR_SYMLINK_CREATION \
-
 
 fi
 
