@@ -1,0 +1,52 @@
+SETUP_HARBOR=${setup_harbor}
+GITHUB_SYNC_PAT=${github_sync_pat}
+
+################################################
+## Add Harbor caching container registry/proxy##
+################################################
+if [[ -n "$SETUP_HARBOR" ]]; then
+
+cat << EOF > /tmp/harbor.yaml
+externalURL: https://harbor.$DOMAIN
+exposureType: ingress
+adminPassword: changeme
+commonLabels:
+  goharbor.io/harbor-container-webhook-disable: 'true'
+ingress:
+  core:
+    hostname: harbor.$DOMAIN   
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      size: 100Gi
+      accessModes: 
+        - ReadWriteOnce
+postgresql:
+  architecture: replication
+  readReplicas:
+    extendedConfiguration: |
+      max_connections = 1024
+  primary:       
+    extendedConfiguration: |
+      max_connections = 1024
+EOF
+
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm install harbor bitnami/harbor -f /tmp/harbor.yaml
+fi
+
+
+
+
+
+
+
+
+
+
+if [[ -n "$GITHUB_SYNC_PAT" ]]; then
+kubectl create secret generic github-sync-pat \
+  --from-literal github_sync_pat="$GITHUB_SYNC_PAT"
+
+fi

@@ -17,6 +17,7 @@ GITLAB_HELMCHART_VERSION=${gitlab_helmchart_version}
 GITHUB_PAT=${github_pat}
 GITLAB_PAT=${gitlab_pat}
 GITHUB_SYNC_PAT=${github_sync_pat}
+SETUP_HARBOR=${setup_harbor}
 GITLAB_AGENT_TOKEN=${gitlab_agent_token}
 SETUP_VIP_LB=${setup_vip_lb}
 SETUP_NFS_PROVISIONER=${setup_nfs_provisioner}
@@ -106,7 +107,13 @@ if [[ -d "$MANIFEST_FOLDER/pvs" ]]; then
   done
 fi
 
-# Add Harbor caching container registry/proxy
+
+fi
+
+################################################
+## Add Harbor caching container registry/proxy##
+################################################
+if [[ -n "$SETUP_HARBOR" ]]; then
 
 cat << EOF > /tmp/harbor.yaml
 externalURL: https://harbor.$DOMAIN
@@ -116,29 +123,26 @@ commonLabels:
   goharbor.io/harbor-container-webhook-disable: 'true'
 ingress:
   core:
-    hostname: harbor.$DOMAIN   
+    hostname: harbor.$DOMAIN
 persistence:
   enabled: true
   persistentVolumeClaim:
     registry:
       size: 100Gi
-      accessModes: 
+      accessModes:
         - ReadWriteOnce
 postgresql:
   architecture: replication
   readReplicas:
     extendedConfiguration: |
       max_connections = 1024
-  primary:       
+  primary:
     extendedConfiguration: |
       max_connections = 1024
 EOF
 
-
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm install harbor bitnami/harbor -f /tmp/harbor.yaml
-
-
 fi
 
 ################################################
@@ -241,8 +245,8 @@ type: kubernetes.io/dockerconfigjson
 apiVersion: v1
 metadata:
   name: dockerconfigjson-github-com
-stringData:
-  .dockerconfigjson: {"auths":{"docker.pkg.github.com":{"auth":"$(kubectl get secrets github-pat --template={{.data.personal_access_token}})"}}}
+data:
+  .dockerconfigjson: $(echo "{\"auths\":{\"docker.pkg.github.com\":{\"auth\":\"$(kubectl get secrets github-pat --template={{.data.personal_access_token}})\"}}}" | base64 -w 0)
 EOF
 
 fi
