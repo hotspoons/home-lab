@@ -533,7 +533,7 @@ helm install --generate-name \
      --set driver.repository=container-registry.$DOMAIN/nvidia \
      --set driver.version=$NVIDIA_DRIVER_VERSION \
      --set validator.driver.env[0].name=DISABLE_DEV_CHAR_SYMLINK_CREATION \
-     --set validator.driver.env[0].value=true
+     --set validator.driver.env[0].value='"true"'
 
 fi
 
