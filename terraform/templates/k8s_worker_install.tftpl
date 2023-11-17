@@ -33,6 +33,7 @@ dnf -y upgrade
 setenforce 0
 sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
 modprobe br_netfilter
+echo "br_netfilter" >> /etc/modules-load.d/br_netfilter.conf
 
 dnf install -y wget git lsof firewalld bash-completion iproute-tc nano jq bash-completion zip unzip pciutils
 wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 && chmod +x /usr/bin/yq
@@ -101,3 +102,13 @@ curl https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/bin/mc && chmod 
 
 yum clean all
 
+################################################
+## Create continuation script after reboot    ##
+################################################
+
+echo "#!/bin/bash" > /var/lib/cloud/scripts/per-boot/continue-config.sh
+echo "if [[ -f \"/tmp/cluster_config.sh\" ]]; then " >> /var/lib/cloud/scripts/per-boot/continue-config.sh
+echo "mv /tmp/cluster_config.sh /tmp/cluster_config_completed.sh" >> /var/lib/cloud/scripts/per-boot/continue-config.sh
+echo "/tmp/cluster_config_completed.sh" >> /var/lib/cloud/scripts/per-boot/continue-config.sh
+echo "fi" >> /var/lib/cloud/scripts/per-boot/continue-config.sh
+chmod +x /var/lib/cloud/scripts/per-boot/continue-config.sh
