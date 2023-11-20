@@ -103,6 +103,8 @@ tar -zxvf $HELM_FILE
 mv linux-amd64/helm /usr/bin/helm
 
 curl https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/bin/mc && chmod +x /usr/bin/mc
+curl https://github.com/derailed/k9s/releases/download/v0.28.2/k9s_Linux_amd64.tar.gz -L -o k9s.tar.gz && \
+    tar -xvf k9s.tar.gz && mv k9s /usr/bin/
 
 ################################################
 ## Clean up space                             ##

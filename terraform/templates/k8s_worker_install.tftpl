@@ -55,8 +55,6 @@ swapoff -a
 ################################################
 ## Install Docker and Kubernetes              ##
 ################################################
-mkdir -p /etc/docker
-echo "{ \"insecure-registries\":[\"$MASTER_HOSTNAME.$DOMAIN:5000\"] } " > /etc/docker/daemon.json
 dnf config-manager --add-repo=$DOCKER_REPO
 dnf install -y $CONTAINER_IO_PKG
 dnf install docker-ce --nobest -y
