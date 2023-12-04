@@ -65,7 +65,7 @@ variable "hp_storage_path" {
 }
 
 variable "gpu_nodes" {
-    description = "0-indexed list of nodes for which you wish to bind GPUs, currently only 1 supported though"
+    description = "List of space-separated list of which GPUs go with which compute nodes, zero indexed for GPUs. For example, 3 nodes, 3 GPUs - no GPUs node 1, GPU 1 for node 2, GPUs 2 and 3 for node 3: [\"\", \"0\", \"1 2\"]"
     type = list
     default = []
 }

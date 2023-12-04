@@ -1,18 +1,75 @@
-base_path=$BASE_PATH
-if [[ -z "$base_path" ]]; then
-  script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && cd .. && pwd )
-  base_path="$script_dir/terraform"
-fi
-# Assumes a single GPU (P4 in my case), no audio. TODO this should support more than 1 GPU, and 
-# perhaps figure out vGPU setup even though that seems overkill for this use case
-PCI_ID=$(lspci -nn | grep -i nvidia | grep -i controller | egrep -o "[[:xdigit:]]{4}:[[:xdigit:]]{4}")
-BUS_ID=$(lspci -Dnn | grep -i nvidia | grep -i controller | awk '{ print $1 }')
-_DOMAIN=$((10#$(echo $BUS_ID | cut -d ':' -f 1)))
-_BUS=$((10#$(echo $BUS_ID | cut -d ':' -f 2)))
-_SLOT=$((10#$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 1 )))
-_FUNCTION=$((10#$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 )))
-if [[ "$_DOMAIN" != "0x0000" && "$_BUS" != "0x00" && "$_SLOT" != "0x00"  && "$_FUNCTION" != "0x0" ]]; then
-  echo "{\"domain\": \"$_DOMAIN\", \"bus\": \"$_BUS\", \"slot\": \"$_SLOT\", \"function\": \"$_FUNCTION\"}"
+ARGS="$*"
+if [[ "$ARGS" != "" ]]; then
+  INDICES=($(jq '.gpu_indexes' --raw-output <<< $ARGS))
 else
-  echo "{\"domain\": \"\", \"bus\": \"\", \"slot\": \"\", \"function\": \"\"}"
+  eval "$(jq -r '@sh "export INDICES=\(.gpu_indexes)"')"
 fi
+BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" -e "DMI2" | awk '{ print $1 }')
+#BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" -e "DMI2" | grep -i controller | awk '{ print $1 }')
+GPUS=()
+XSLTS=()
+ITERATOR=0
+
+for BUS_ID in $BUS_IDS; do
+  _DOMAIN=$((10#$(echo $BUS_ID | cut -d ':' -f 1)))
+  _BUS=$((10#$(echo $BUS_ID | cut -d ':' -f 2)))
+  _SLOT=$((10#$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 1 )))
+  _FUNCTION=$((10#$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 )))
+
+read -r -d '' XSLT_TF << EOF
+    <xsl:copy>
+      <xsl:apply-templates select="@* | node()|@*"/>
+        <xsl:element name="hostdev">
+          <xsl:attribute name="mode">subsystem</xsl:attribute>
+          <xsl:attribute name="type">pci</xsl:attribute>
+          <xsl:attribute name="managed">yes</xsl:attribute>
+          <xsl:element name="driver">
+            <xsl:attribute name="name">vfio</xsl:attribute>
+          </xsl:element>
+          <xsl:element name="source">
+            <xsl:element name="address">
+              <xsl:attribute name="domain">${_DOMAIN}</xsl:attribute>
+              <xsl:attribute name="bus">${_BUS}</xsl:attribute>
+              <xsl:attribute name="slot">${_SLOT}</xsl:attribute>
+              <xsl:attribute name="function">${_FUNCTION}</xsl:attribute>
+            </xsl:element>
+        </xsl:element>
+      </xsl:element>
+    </xsl:copy>
+EOF
+  for I in "${INDICES[@]}"; do
+    if [[ "$I" == "$ITERATOR" ]]; then
+      XSLTS+=("$XSLT_TF")
+    fi
+  done
+  
+  let "ITERATOR++"
+  GPUS+=("{\"domain\": \"$_DOMAIN\", \"bus\": \"$_BUS\", \"slot\": \"$_SLOT\", \"function\": \"$_FUNCTION\"}")
+done
+
+read -r -d '' XSLT_DOC << EOF
+<?xml version="1.0" ?>
+<xsl:stylesheet version="1.0"
+                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  <xsl:output omit-xml-declaration="yes" indent="yes"/>
+  <xsl:template match="node()|@*">
+     <xsl:copy>
+       <xsl:apply-templates select="node()|@*"/>
+     </xsl:copy>
+  </xsl:template>
+
+  <xsl:template match="/domain/devices">
+    $(IFS=$'\n'; echo "${XSLTS[*]}")
+  </xsl:template>
+</xsl:stylesheet>
+EOF
+
+#echo "${XSLTS[*]}___________________________________________________________"
+#echo "$XSLT_DOC"
+if [[ "${#XSLTS[@]}" == "0" ]]; then
+  echo "{\"xslt\": null}"
+  exit 0
+fi
+
+ESCAPED=$(jq -R -s '.' <<< $XSLT_DOC)
+echo "{\"xslt\": $ESCAPED}"

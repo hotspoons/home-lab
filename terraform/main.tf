@@ -24,9 +24,12 @@ resource "random_uuid" "salt" {
 
 data "external" "gpu_info" {
   program = ["bash", "${path.module}/../scripts/get-gpuinfo.sh"]
+  count = var.instance_count
   query = {
+    gpu_indexes: element(var.gpu_nodes, count.index) #length(var.gpu_nodes) > count.index ? element(var.gpu_nodes, count.index) : ""
   }
 }
+
 
 locals{
   join_cmd_salt = "${random_uuid.salt.result}"
@@ -94,13 +97,12 @@ locals{
     setup_pihole_dns: var.setup_pihole_dns ? "true" : "",
     setup_dev_tools: var.setup_dev_tools ? "true" : "",
     setup_wasm: var.setup_wasm ? "true" : "",
-    setup_gpu_operator: local.gpu_map.domain != "" ? "true" : "",
+    setup_gpu_operator: length(var.gpu_nodes) > 0 ? "true" : "",
     setup_harbor: var.setup_harbor ? "true" : ""
   })))
   cert = var.cert_cert != "" ? jsonencode(file(var.cert_cert)) : jsonencode("")
   full_chain = var.cert_full_chain != "" ? jsonencode(file(var.cert_full_chain)) : jsonencode("")
   cert_private_key = var.cert_private_key != "" ? jsonencode(file(var.cert_private_key)) : jsonencode("")
-  gpu_map = data.external.gpu_info.result
 }
 
 #########################
@@ -205,9 +207,8 @@ resource "libvirt_domain" "domain-vm" {
     listen_type = "address"
     autoport    = true
   }
-  # If we found a GPU and we want a GPU node, go ahead and transform the output to pass through the PCI bus
-  # requires io_mmu, virtio binding, and other stuff to make GPU passthrough. TODO vGPU
+  # If we found a GPU and we want a GPU node, fetch the xslt transform for the GPU and instance index combo
   xml {
-    xslt = contains(var.gpu_nodes, count.index) && local.gpu_map.domain != "" ? chomp(templatefile("templates/gpu.xslt", local.gpu_map)) : null
+    xslt = data.external.gpu_info[count.index].result.xslt
   }
 }
