@@ -15,6 +15,32 @@ environment variables with the prefix `TF_VAR_` which will override your `terraf
 ## On EL8-compatible host with internet connectivity, install required packages as root
 cd /tmp
 export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
+
+dnf install -y yum-utils wget git qemu-kvm virt-manager libvirt virt-install virt-viewer virt-top \
+    virt-top libguestfs-tools 
+    
+systemctl start libvirtd.service libvirtd.socket
+systemctl enable libvirtd.service libvirtd.socket
+
+yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo11
+dnf install -y terraform
+
+## Setup network bridge, connect it to your primary interface
+nmcli con add ifname br0 type bridge con-name br0
+nmcli con add type bridge-slave ifname $INTERFACE master br0
+
+# then add host bridge to KVM
+echo "<network><name>br0</name><forward mode=\"bridge\"/><bridge name=\"br0\" /></network>" > br0.xml
+virsh net-define br0.xml
+virsh net-start br0
+virsh net-autostart br0
+
+echo "nmcli con down $INTERFACE" >> upbridge.sh
+echo "nmcli con up br0" >> upbridge.sh
+echo "restart" >> upbridge.sh
+bash upbridge.sh ## Reconnect via ssh after system reboots
+
+export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
 # How large you want each compute node's disk to be
 export INSTANCE_DISK_SIZE=200G
 # Where to put the storage pool for the VMs
@@ -49,24 +75,6 @@ export TF_VAR_setup_gitlab=true
 export TF_VAR_setup_pihole_dns=true
 # SSH keys to install on compute nodes
 export TF_VAR_ssh_authorized_keys='["ssh-rsa AAAAB3N....= me@hostname"]'
-
-yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
-dnf install -y yum-utils wget git qemu-kvm virt-manager libvirt virt-install virt-viewer virt-top \
-    bridge-utils virt-top libguestfs-tools terraform 
-
-## Setup network bridge, connect it to your primary interface
-nmcli con add ifname br0 type bridge con-name br0
-nmcli con add type bridge-slave ifname $INTERFACE master br0
-
-# then add host bridge to KVM
-echo "<network><name>br0</name><forward mode=\"bridge\"/><bridge name=\"br0\" /></network>" > br0.xml
-virsh net-define br0.xml
-virsh net-start br0
-virsh net-autostart br0
-
-echo "nmcli con down $INTERFACE" >> upbridge.sh
-echo "nmcli con up br0" >> upbridge.sh
-bash upbridge.sh ## Reconnect via ssh if the connection was lost, rerun exports above
 
 ## Download Rocky generic cloud image, resize
 wget https://download.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2
