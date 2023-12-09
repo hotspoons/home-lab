@@ -13,4 +13,8 @@ export TF_VAR_instance_count=2
 # The domain for which you have a TLS certificate and/or CloudFlare DNS configured, TLD for all deployments
 export TF_VAR_domain=siomporas.com
 # If you want to add GPUs to specific compute nodes, do it here
-export TF_VAR_gpu_nodes= ["", "0 1"]
+export TF_VAR_gpu_nodes= ["", "0"]
+# Run `export JOIN_CMD_SALT=1234; export MASTER_HOSTNAME=$(hostname);`, then this: 
+#   https://github.com/hotspoons/home-lab/blob/6f2f4f2a4c45e73b4fe1e4ddf902e756439193df/terraform/templates/k8s_master_configure.tftpl#L80-L114
+# on master, and capture the last line of output and put it below
+export TF_VAR_join_cmd_url=https://rocky-k8s-hosts-0.siomporas.com:8000/1234/join_kubernetes_cluster.sh
