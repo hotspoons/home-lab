@@ -15,6 +15,9 @@ environment variables with the prefix `TF_VAR_` which will override your `terraf
 ## On EL8-compatible host with internet connectivity, install required packages as root
 cd /tmp
 export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
+export ROUTE=$(ip route show default 0.0.0.0/0 | awk '{print $3}')     #TODO DHCP
+export IP_ADDR=$(hostname -i)                                          #TODO DHCP
+export NS=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}') #TODO DHCP
 
 dnf install -y yum-utils wget git qemu-kvm virt-manager libvirt virt-install virt-viewer virt-top \
     virt-top libguestfs-tools 
@@ -22,12 +25,16 @@ dnf install -y yum-utils wget git qemu-kvm virt-manager libvirt virt-install vir
 systemctl start libvirtd.service libvirtd.socket
 systemctl enable libvirtd.service libvirtd.socket
 
-yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo11
+yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 dnf install -y terraform
 
 ## Setup network bridge, connect it to your primary interface
-nmcli con add ifname br0 type bridge con-name br0
-nmcli con add type bridge-slave ifname $INTERFACE master br0
+nmcli con add ifname br0 type bridge con-name 'br0'
+nmcli con add type bridge-slave ifname $INTERFACE master 'br0'
+nmcli con mod br0 ipv4.addresses $IP_ADDR/24
+nmcli con mod br0 ipv4.method manual
+nmcli con mod br0 ipv4.gateway $ROUTE
+nmcli con mod br0 ipv4.dns $NS
 
 # then add host bridge to KVM
 echo "<network><name>br0</name><forward mode=\"bridge\"/><bridge name=\"br0\" /></network>" > br0.xml
@@ -37,8 +44,7 @@ virsh net-autostart br0
 
 echo "nmcli con down $INTERFACE" >> upbridge.sh
 echo "nmcli con up br0" >> upbridge.sh
-echo "restart" >> upbridge.sh
-bash upbridge.sh ## Reconnect via ssh after system reboots
+bash upbridge.sh ## Reconnect via ssh if your SSH connection times out
 
 export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
 # How large you want each compute node's disk to be
@@ -60,6 +66,8 @@ export TF_VAR_nfs_path=/nfs/exports/kubernetes
 # Configure External DNS to use your Pi-hole by providing its hostname or IP and password
 export TF_VAR_pi_hole_server=pi.hole
 export TF_VAR_pi_hole_password="changeme"
+# If you want to add GPUs to specific compute nodes, do it here
+export TF_VAR_gpu_nodes= ["", "0 1"]
 # The VIP IP, then start and end IP range for the ingress controller IPs, should be out of DHCP range
 export TF_VAR_vip_ip=192.168.1.205
 export TF_VAR_start_ip=192.168.1.206
@@ -79,7 +87,8 @@ export TF_VAR_ssh_authorized_keys='["ssh-rsa AAAAB3N....= me@hostname"]'
 ## Download Rocky generic cloud image, resize
 wget https://download.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2
 qemu-img resize Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2 $INSTANCE_DISK_SIZE
-git clone https://github.com/hotspoons/home-lab.git
+mv Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2 $TF_VAR_storage_pool_path
+cd ~ && git clone https://github.com/hotspoons/home-lab.git
 cd home-lab/terraform
 
 ## Run and apply terraform. This will take several minutes (15 minutes until I have a cluster, 20 minutes 
