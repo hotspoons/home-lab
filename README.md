@@ -20,7 +20,7 @@ export IP_ADDR=$(hostname -i)                                          #TODO DHC
 export NS=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}') #TODO DHCP
 
 dnf install -y yum-utils wget git qemu-kvm virt-manager libvirt virt-install virt-viewer virt-top \
-    virt-top libguestfs-tools 
+    virt-top libguestfs-tools libxslt pciutils
     
 systemctl start libvirtd.service libvirtd.socket
 systemctl enable libvirtd.service libvirtd.socket
@@ -91,9 +91,8 @@ mv Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2 $TF_VAR_storage_pool_path
 cd ~ && git clone https://github.com/hotspoons/home-lab.git
 cd home-lab/terraform
 
-## Run and apply terraform. This will take several minutes (15 minutes until I have a cluster, 20 minutes 
-## to fully stood up on an old HP Proliant DL360p G8 with SSDs)
-cp terraform.tfvars.example terraform.tfvars    
+## Run and apply terraform. 
+cp terraform.full-cluster.tfvars terraform.tfvars    
 terraform init
 terraform apply -auto-approve
 

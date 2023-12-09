@@ -1,6 +1,7 @@
 dnf update
 dnf -y update
 
+dnf install -y yum-utils
 yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 dnf -y install nfs-utils samba samba-common samba-client postfix cyrus-sasl-plain mailx \
      cyrus-sasl yum-utils terraform wget git qemu-kvm virt-manager libvirt virt-install \
@@ -53,9 +54,18 @@ postmap /etc/postfix/sasl_passwd
 systemctl restart postfix.service 
 mdadm --monitor --scan --test --oneshot
 
+export INTERFACE=$(ip route get 8.8.8.8 | sed -n 's/.*dev \([^\ ]*\).*/\1/p')
+export ROUTE=$(ip route show default 0.0.0.0/0 | awk '{print $3}')     #TODO DHCP
+export IP_ADDR=$(hostname -i)                                          #TODO DHCP
+export NS=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}') #TODO DHCP
+
 ## Setup network bridge, connect it to your primary interface
-nmcli con add ifname br0 type bridge con-name br0
-nmcli con add type bridge-slave ifname $INTERFACE master br0
+nmcli con add ifname br0 type bridge con-name 'br0'
+nmcli con add type bridge-slave ifname $INTERFACE master 'br0'
+nmcli con mod br0 ipv4.addresses $IP_ADDR/24
+nmcli con mod br0 ipv4.method manual
+nmcli con mod br0 ipv4.gateway $ROUTE
+nmcli con mod br0 ipv4.dns $NS
 
 # then add host bridge to KVM
 echo "<network><name>br0</name><forward mode=\"bridge\"/><bridge name=\"br0\" /></network>" > br0.xml
@@ -65,8 +75,7 @@ virsh net-autostart br0
 
 echo "nmcli con down $INTERFACE" >> upbridge.sh
 echo "nmcli con up br0" >> upbridge.sh
-bash upbridge.sh ## Reconnect via ssh if the connection was lost, rerun exports above
-
+bash upbridge.sh ## Reconnect via ssh if your SSH connection times out
 ## Enable GPU passthrough support
 cp /etc/default/grub /tmp/grub-default-backup
 source /etc/default/grub
@@ -96,15 +105,9 @@ ln -s /usr/bin/backup-lab /etc/cron.daily/
 # To patch consumer cards for vGPU, use this utility: https://github.com/VGPU-Community-Drivers/vGPU-Unlock-patcher.git
 # I am using 1 GPU for 1 guest instance that will have GPU annotated kubernetes nodes, should be plenty for my use case
 #rpm -i Host_Drivers/NVIDIA-vGPU-rhel-8.8-535.104.06.x86_64.rpm
-PCI_ID=$(lspci -nn | grep -i nvidia | grep -i controller | egrep -o "[[:xdigit:]]{4}:[[:xdigit:]]{4}")
-BUS_ID=$(lspci -Dnn | grep -i nvidia | grep -i controller | awk '{ print $1 }')
-# TODO echo this stuff to bind vfio now we got the info, will do later
-_DOMAIN=$(echo $BUS_ID | cut -d ':' -f 1 | xargs printf '0x%04x')
-_BUS=$(echo $BUS_ID | cut -d ':' -f 2 | xargs printf '0x%02x')
-_SLOT=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 1 | xargs printf '0x%02x')
-_FUNCTION=$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 | xargs printf '0x%01x')
-
-echo "options vfio-pci ids=$PCI_ID" > /etc/modprobe.d/vfio.conf
+PCI_ID="$(lspci -nn | grep -i nvidia | grep -i controller | egrep -o "[[:xdigit:]]{4}:[[:xdigit:]]{4}")"
+PCI_IDS="$(echo ${PCI_ID} | sed 's/ /,/g')"
+echo "options vfio-pci ids=$PCI_IDS" > /etc/modprobe.d/vfio.conf
 echo 'vfio-pci' > /etc/modules-load.d/vfio-pci.conf
 echo "blacklist nouveau" >> /etc/modprobe.d/blacklist.conf 
 echo "blacklist nvidia" >> /etc/modprobe.d/blacklist.conf 
