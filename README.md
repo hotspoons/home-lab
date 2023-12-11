@@ -20,7 +20,7 @@ export IP_ADDR=$(hostname -i)                                          #TODO DHC
 export NS=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}') #TODO DHCP
 
 dnf install -y yum-utils wget git qemu-kvm virt-manager libvirt virt-install virt-viewer virt-top \
-    virt-top libguestfs-tools libxslt pciutils
+    virt-top libguestfs-tools libxslt pciutils jq
     
 systemctl start libvirtd.service libvirtd.socket
 systemctl enable libvirtd.service libvirtd.socket

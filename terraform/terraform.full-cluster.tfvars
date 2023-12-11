@@ -1,7 +1,7 @@
 # VM setup
 
 storage_pool_path       = "/media/nvme/vms/k8s"
-image_path              = "/tmp/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
+image_path              = "/media/nvme/images/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
 remote_host             = "qemu+ssh://file-server.lan"
 compute_name            = "rocky-k8s-hosts"
 memory                  = "8192"
@@ -52,11 +52,4 @@ setup_pihole_dns        = true
 setup_dev_tools         = true
 setup_wasm              = false 
 
-ssh_authorized_keys     = [
-    "ssh-rsa ...= root@vm-host.siomporas.com"
-    ]
-# cat ~/.ssh/id_rsa | awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' | jq -R
-ssh_keys                = {
-    "ed25519_private"   = "-----BEGIN OPENSSH PRIVATE KEY-----\\nb3Bl..."
-    "ed25519_public"    = "ssh-rsa AAAAB3NzaC1yc2EAAA...."
-}
+

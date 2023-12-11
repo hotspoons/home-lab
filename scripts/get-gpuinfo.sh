@@ -4,8 +4,8 @@ if [[ "$ARGS" != "" ]]; then
 else
   eval "$(jq -r '@sh "export INDICES=\(.gpu_indexes)"')"
 fi
-BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" -e "DMI2" | awk '{ print $1 }')
-#BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" -e "DMI2" | grep -i controller | awk '{ print $1 }')
+#BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" | awk '{ print $1 }')
+BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" | grep -i controller | awk '{ print $1 }')
 GPUS=()
 XSLTS=()
 ITERATOR=0

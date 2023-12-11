@@ -5,7 +5,7 @@ dnf install -y yum-utils
 yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 dnf -y install nfs-utils samba samba-common samba-client postfix cyrus-sasl-plain mailx \
      cyrus-sasl yum-utils terraform wget git qemu-kvm virt-manager libvirt virt-install \
-     virt-viewer virt-top bridge-utils virt-top libguestfs-tools libxslt pciutils
+     virt-viewer virt-top bridge-utils virt-top libguestfs-tools libxslt pciutils jq
 systemctl enable --now nfs-server rpcbind
 getent group kvm || groupadd kvm -g 36
 getent passwd vdsm || useradd vdsm -u 36 -g 36
