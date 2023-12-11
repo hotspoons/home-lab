@@ -16,7 +16,6 @@ el_version              = "8"
 
 # Kubernetes settings
 join_cmd_url           = ""
-cloudflare_global_api_key = ""
 cloudflare_email        = "richietommy@yahoo.com"
 cert_full_chain         = "/etc/letsencrypt/live/siomporas.com/fullchain.pem"
 cert_cert               = "/etc/letsencrypt/live/siomporas.com/cert.pem"
@@ -25,7 +24,6 @@ nfs_server              = "vm-host.siomporas.com"
 nfs_path                = "/nfs/exports/kubernetes"
 nfs_provision_name      = "siomporas.com/nfs"
 pi_hole_server          = "pi.hole"
-pi_hole_password        = "changme"
 start_ip                = "192.168.1.207"
 end_ip                  = "192.168.1.246"
 vip_ip                  = "192.168.1.206"
@@ -38,10 +36,6 @@ kubernetes_version      = "1.28.2"
 external_dns_ip         = "192.168.1.201"
 external_dns_suffix     = ""
 gitlab_ip               = "192.168.1.220"
-github_pat              ="username:ghp_...."
-github_sync_pat         ="glpat--..."
-gitlab_pat              = "glpat-..."
-gitlab_agent_token      = "glagent-z..."
 workloads_on_control_plane = false
 setup_vip_lb            = true
 setup_nfs_provisioner   = true
