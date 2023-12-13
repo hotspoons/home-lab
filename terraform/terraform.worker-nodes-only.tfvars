@@ -21,4 +21,5 @@ containerd_version      = "1.6.24-3.1.el8"
 helm_version            = "3.12.3"
 gitlab_helmchart_version= "7.4.1"
 kubernetes_version      = "1.28.2"
+external_dns_ip         = "192.168.1.201"
 
