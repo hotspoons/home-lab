@@ -5,6 +5,7 @@ AARCH=${aarch}
 EL_VERSION=${el_version}
 CONTAINERD_VERSION=${containerd_version}
 HELM_VERSION=${helm_version}
+KUBERNETES_VERSION=${kubernetes_version}
 MASTER_HOSTNAME=${master_hostname}
 
 #Setup configuration
@@ -29,7 +30,6 @@ dhclient -1 eth0
 ################################################
 ## Configure EL8 for networking and tools     ##
 ################################################
-dnf -y upgrade
 setenforce 0
 sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
 modprobe br_netfilter
@@ -76,8 +76,7 @@ exclude=kube*
 EOF
 
 setenforce 0
-dnf upgrade -y
-dnf install -y terraform vault kubelet kubeadm kubectl --disableexcludes=kubernetes
+dnf install -y terraform vault kubelet-$KUBERNETES_VERSION kubeadm-$KUBERNETES_VERSION kubectl-$KUBERNETES_VERSION --disableexcludes=kubernetes
 systemctl enable kubelet
 systemctl start kubelet
 
