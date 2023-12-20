@@ -75,6 +75,7 @@ sed -i "s/SystemdCgroup = false/SystemdCgroup = true/g" /etc/containerd/config.t
 
 echo "/run/nvidia/driver/usr/lib64" >> /etc/ld.so.conf.d/nvidia.conf
 echo " *  *  *  *  * root ldconfig" >> /etc/crontab
+ln -s /usr/sbin/ldconfig /usr/sbin/ldconfig.real
 ldconfig
 
 systemctl restart docker.service containerd.service
