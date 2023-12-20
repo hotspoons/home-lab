@@ -74,6 +74,7 @@ nvidia-ctk runtime configure --runtime=containerd
 sed -i "s/SystemdCgroup = false/SystemdCgroup = true/g" /etc/containerd/config.toml
 
 echo "/run/nvidia/driver/usr/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+echo " *  *  *  *  * root ldconfig" >> /etc/crontab
 ldconfig
 
 systemctl restart docker.service containerd.service
