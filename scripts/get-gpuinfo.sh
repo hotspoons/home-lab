@@ -67,4 +67,5 @@ if [[ "${#XSLTS[@]}" == "0" ]]; then
 fi
 
 ESCAPED=$(jq -R -s '.' <<< $XSLT_DOC)
+#echo "THIS IS THE XSLT" > /tmp/xslt.tmp.txt
 echo "{\"xslt\": $ESCAPED}"
