@@ -4,17 +4,16 @@ if [[ "$ARGS" != "" ]]; then
 else
   eval "$(jq -r '@sh "export INDICES=\(.gpu_indexes)"')"
 fi
-#BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" | awk '{ print $1 }')
-BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" | grep -i controller | awk '{ print $1 }')
+BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" | grep -i "3d controller" | awk '{ print $1 }')
 GPUS=()
 XSLTS=()
 ITERATOR=0
 
 for BUS_ID in $BUS_IDS; do
-  _DOMAIN=$((10#$(echo $BUS_ID | cut -d ':' -f 1)))
-  _BUS=$((10#$(echo $BUS_ID | cut -d ':' -f 2)))
-  _SLOT=$((10#$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 1 )))
-  _FUNCTION=$((10#$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 )))
+  _DOMAIN=$((16#$(echo $BUS_ID | cut -d ':' -f 1)))
+  _BUS=$((16#$(echo $BUS_ID | cut -d ':' -f 2)))
+  _SLOT=$((16#$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 1 )))
+  _FUNCTION=$((16#$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 )))
 
 read -r -d '' XSLT_TF << EOF
     <xsl:copy>
@@ -44,9 +43,7 @@ EOF
   done
   
   let "ITERATOR++"
-  GPUS+=("{\"domain\": \"$_DOMAIN\", \"bus\": \"$_BUS\", \"slot\": \"$_SLOT\", \"function\": \"$_FUNCTION\"}")
 done
-
 read -r -d '' XSLT_DOC << EOF
 <?xml version="1.0" ?>
 <xsl:stylesheet version="1.0"
@@ -64,8 +61,6 @@ read -r -d '' XSLT_DOC << EOF
 </xsl:stylesheet>
 EOF
 
-#echo "${XSLTS[*]}___________________________________________________________"
-#echo "$XSLT_DOC"
 if [[ "${#XSLTS[@]}" == "0" ]]; then
   echo "{\"xslt\": null}"
   exit 0
