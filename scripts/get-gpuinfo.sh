@@ -49,8 +49,7 @@ for BUS_ID in $BUS_IDS; do
   _FUNCTION=$((16#$(echo $BUS_ID | cut -d ':' -f 3 | cut -d '.' -f 2 )))
 
 read -r -d '' XSLT_TF << EOF
-    <xsl:copy>
-      <xsl:apply-templates select="@* | node()|@*"/>
+
         <xsl:element name="hostdev">
           <xsl:attribute name="mode">subsystem</xsl:attribute>
           <xsl:attribute name="type">pci</xsl:attribute>
@@ -67,7 +66,7 @@ read -r -d '' XSLT_TF << EOF
             </xsl:element>
         </xsl:element>
       </xsl:element>
-    </xsl:copy>
+
 EOF
   for I in "${INDICES[@]}"; do
     if [[ "$I" == "$ITERATOR" ]]; then
@@ -90,7 +89,11 @@ read -r -d '' XSLT_DOC << EOF
   </xsl:template>
 
   <xsl:template match="/domain/devices">
-    $(IFS=$'\n'; echo "${XSLTS[*]}")
+      <xsl:copy>
+        <xsl:apply-templates select="@* | node()|@*"/>
+        $(IFS=$'\n'; echo "${XSLTS[*]}")
+      </xsl:copy>
+    
   </xsl:template>
 </xsl:stylesheet>
 EOF

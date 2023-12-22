@@ -105,7 +105,7 @@ ln -s /usr/bin/backup-lab /etc/cron.daily/
 # To patch consumer cards for vGPU, use this utility: https://github.com/VGPU-Community-Drivers/vGPU-Unlock-patcher.git
 # I am using 1 GPU for 1 guest instance that will have GPU annotated kubernetes nodes, should be plenty for my use case
 #rpm -i Host_Drivers/NVIDIA-vGPU-rhel-8.8-535.104.06.x86_64.rpm
-PCI_ID="$(lspci -nn | grep -i nvidia | grep -i controller | egrep -o "[[:xdigit:]]{4}:[[:xdigit:]]{4}")"
+PCI_ID="$(lspci -nn | grep -i nvidia | grep -i '3d controller' | egrep -o "[[:xdigit:]]{4}:[[:xdigit:]]{4}")"
 PCI_IDS="$(echo ${PCI_ID} | sed 's/ /,/g')"
 echo "options vfio-pci ids=$PCI_IDS" > /etc/modprobe.d/vfio.conf
 echo 'vfio-pci' > /etc/modules-load.d/vfio-pci.conf

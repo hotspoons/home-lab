@@ -27,6 +27,8 @@ dhclient -r eth0
 systemctl start NetworkManager.service
 dhclient -1 eth0
 
+echo "Should have gotten a new ip: $(hostname -i)"
+
 ################################################
 ## Configure EL8 for networking and tools     ##
 ################################################
