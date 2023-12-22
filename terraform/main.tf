@@ -26,7 +26,9 @@ data "external" "gpu_info" {
   program = ["bash", "${path.module}/../scripts/get-gpuinfo.sh"]
   count = var.instance_count
   query = {
-    gpu_indexes: element(var.gpu_nodes, count.index) #length(var.gpu_nodes) > count.index ? element(var.gpu_nodes, count.index) : ""
+    gpu_indexes: element(var.gpu_nodes, count.index) #length(var.gpu_nodes) > count.index ? element(var.gpu_nodes, count.index) : "",
+    gpu_grep_filter_primary: var.gpu_grep_filter_primary,
+    gpu_grep_filter_secondary: var.gpu_grep_filter_secondary
   }
 }
 

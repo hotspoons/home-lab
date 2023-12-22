@@ -1,13 +1,45 @@
 ARGS="$*"
+
+DEBUG_FILE=/tmp/xslt.txt
+DEBUG=true
+
+init(){
+  if [[ $DEBUG == true ]]; then
+    if [[ -f "$DEBUG_FILE" ]]; then
+      rm -f $DEBUG_FILE
+      touch $DEBUG_FILE
+    fi
+  fi
+}
+debug(){
+  if [[ $DEBUG == true ]]; then
+    echo "$1" >> $DEBUG_FILE
+  fi
+}
+
 if [[ "$ARGS" != "" ]]; then
   INDICES=($(jq '.gpu_indexes' --raw-output <<< $ARGS))
+  GREP_PRIMARY_ARGS=$(jq '.gpu_grep_filter_primary' --raw-output <<< $ARGS)
+  GREP_SECONDARY_ARGS=$(jq '.gpu_grep_filter_secondary' --raw-output <<< $ARGS)
 else
   eval "$(jq -r '@sh "export INDICES=\(.gpu_indexes)"')"
+  eval "$(jq -r '@sh "export GREP_PRIMARY_ARGS=.gpu_grep_filter_primary"')"
+  eval "$(jq -r '@sh "export GREP_SECONDARY_ARGS=.gpu_grep_filter_secondary"')"
 fi
-BUS_IDS=$(lspci -Dnn | grep -i -e "nvidia" -e "amd/ati" | grep -i "3d controller" | awk '{ print $1 }')
+
+
+debug "INDICES: $(printf ",%s" "${INDICES[@]}")"
+debug "GREP_PRIMARY_ARGS: ${GREP_PRIMARY_ARGS}" 
+debug "GREP_SECONDARY_ARGS: ${GREP_SECONDARY_ARGS}" 
+debug "grep ${GREP_PRIMARY_ARGS[@]}" 
+debug "grep ${GREP_SECONDARY_ARGS[@]}" 
+
+BUS_IDS=$(lspci -Dnn | bash -c "grep ${GREP_PRIMARY_ARGS}" | bash -c "grep ${GREP_SECONDARY_ARGS}" | awk '{ print $1 }')
 GPUS=()
 XSLTS=()
 ITERATOR=0
+
+echo "BUS_IDS: ${BUS_IDS[@]}" 
 
 for BUS_ID in $BUS_IDS; do
   _DOMAIN=$((16#$(echo $BUS_ID | cut -d ':' -f 1)))
@@ -44,6 +76,7 @@ EOF
   
   let "ITERATOR++"
 done
+debug "THIS IS THE XSLT: ${XSLTS[*]}" 
 read -r -d '' XSLT_DOC << EOF
 <?xml version="1.0" ?>
 <xsl:stylesheet version="1.0"
@@ -67,5 +100,5 @@ if [[ "${#XSLTS[@]}" == "0" ]]; then
 fi
 
 ESCAPED=$(jq -R -s '.' <<< $XSLT_DOC)
-#echo "THIS IS THE XSLT" > /tmp/xslt.tmp.txt
+debug "THIS IS THE FINAL OUTPUT: {\"xslt\": $ESCAPED}" 
 echo "{\"xslt\": $ESCAPED}"

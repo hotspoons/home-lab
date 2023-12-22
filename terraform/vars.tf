@@ -64,6 +64,18 @@ variable "hp_storage_path" {
     default = ""
 }
 
+variable "gpu_grep_filter_primary" {
+    description = "Arguments for the grep command that will be used as the primary filter to capture GPUs from the output of 'lspci -Dnn'. Quote values containing spaces with single quotes"
+    type = string
+    default = "-i -e 'nvidia' -e 'amd/ati'"
+}
+
+variable "gpu_grep_filter_secondary" {
+    description = "Arguments ifor the grep command that will be used as the secondary filter to capture GPUs from the output of 'lspci -Dnn'.  Quote values containing spaces with single quotes"
+    type = string
+    default = "-i '3d controller'"
+}
+
 variable "gpu_nodes" {
     description = "List of space-separated list of which GPUs go with which compute nodes, zero indexed for GPUs. For example, 3 nodes, 3 GPUs - no GPUs node 1, GPU 1 for node 2, GPUs 2 and 3 for node 3: [\"\", \"0\", \"1 2\"]"
     type = list
