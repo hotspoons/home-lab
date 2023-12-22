@@ -17,14 +17,15 @@ debug(){
   fi
 }
 
+init
+
 if [[ "$ARGS" != "" ]]; then
   INDICES=($(jq '.gpu_indexes' --raw-output <<< $ARGS))
   GREP_PRIMARY_ARGS=$(jq '.gpu_grep_filter_primary' --raw-output <<< $ARGS)
   GREP_SECONDARY_ARGS=$(jq '.gpu_grep_filter_secondary' --raw-output <<< $ARGS)
 else
-  eval "$(jq -r '@sh "export INDICES=\(.gpu_indexes)"')"
-  eval "$(jq -r '@sh "export GREP_PRIMARY_ARGS=.gpu_grep_filter_primary"')"
-  eval "$(jq -r '@sh "export GREP_SECONDARY_ARGS=.gpu_grep_filter_secondary"')"
+  eval "$(jq -r '@sh "export INDICES=\(.gpu_indexes) GREP_PRIMARY_ARGS=\(.gpu_grep_filter_primary) GREP_SECONDARY_ARGS=\(.gpu_grep_filter_secondary)"')"
+  INDICES=($INDICES)
 fi
 
 
@@ -39,7 +40,7 @@ GPUS=()
 XSLTS=()
 ITERATOR=0
 
-echo "BUS_IDS: ${BUS_IDS[@]}" 
+debug "BUS_IDS: ${BUS_IDS[@]}" 
 
 for BUS_ID in $BUS_IDS; do
   _DOMAIN=$((16#$(echo $BUS_ID | cut -d ':' -f 1)))
