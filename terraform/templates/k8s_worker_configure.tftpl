@@ -78,6 +78,8 @@ echo " *  *  *  *  * root ldconfig" >> /etc/crontab
 ln -s /usr/sbin/ldconfig /usr/sbin/ldconfig.real
 ldconfig
 
+ln -s /run/nvidia/driver/usr/bin/nvidia-smi /usr/bin/nvidia-smi
+
 systemctl restart docker.service containerd.service
 
 fi
