@@ -64,6 +64,12 @@ variable "hp_storage_path" {
     default = ""
 }
 
+variable "update_os" {
+    description = "Update the OS of the container image prior to installing everything, defaults to true. Provide an empty value for false"
+    type = string
+    default = "true"
+}
+
 variable "gpu_grep_filter_primary" {
     description = "Arguments for the grep command that will be used as the primary filter to capture GPUs from the output of 'lspci -Dnn'. Quote values containing spaces with single quotes"
     type = string

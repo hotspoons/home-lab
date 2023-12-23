@@ -7,6 +7,7 @@ CONTAINERD_VERSION=${containerd_version}
 HELM_VERSION=${helm_version}
 KUBERNETES_VERSION=${kubernetes_version}
 MASTER_HOSTNAME=${master_hostname}
+UPDATE_OS=${update_os}
 
 #Setup configuration
 DOCKER_REPO=https://download.docker.com/linux/centos/docker-ce.repo
@@ -28,6 +29,14 @@ systemctl start NetworkManager.service
 dhclient -1 eth0
 
 echo "Should have gotten a new ip: $(hostname -i)"
+
+################################################
+## Update base OS                             ##
+################################################
+
+if [[ -n "$UPDATE_OS" ]]; then
+  dnf update -y
+fi
 
 ################################################
 ## Configure EL8 for networking and tools     ##

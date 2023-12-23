@@ -43,7 +43,8 @@ locals{
     containerd_version: var.containerd_version,
     helm_version: var.helm_version,
     kubernetes_version: var.kubernetes_version,
-    el_version: var.el_version
+    el_version: var.el_version,
+    update_os: var.update_os
   })))
   worker_install = jsonencode(chomp(templatefile("templates/k8s_worker_install.tftpl", {
     base_arch: var.base_arch,
@@ -52,7 +53,8 @@ locals{
     containerd_version: var.containerd_version,
     helm_version: var.helm_version,
     kubernetes_version: var.kubernetes_version,
-    el_version: var.el_version
+    el_version: var.el_version,
+    update_os: var.update_os
   })))
   master_cluster_config = jsonencode(chomp(templatefile("templates/k8s_master_configure.tftpl", {
     master_hostname: "${var.compute_name}-0",
