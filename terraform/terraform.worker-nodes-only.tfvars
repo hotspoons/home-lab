@@ -1,6 +1,6 @@
 # VM setup
 storage_pool_path       = "/media/nvme/vms/k8s"
-image_path              = "/media/nvme/images/Rocky-8-GenericCloud-LVM.latest.x86_64.qcow2"
+image_path              = "/media/nvme/images/Rocky-8-GenericCloud-LVM-8.9-20231119.0.x86_64.qcow2"
 remote_host             = "qemu+ssh://file-server.lan"
 compute_name            = "gpu-hosts"
 memory                  = "8192"

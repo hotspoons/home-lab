@@ -73,6 +73,8 @@ virsh net-define br0.xml
 virsh net-start br0
 virsh net-autostart br0
 
+echo 'ETHTOOL_OPTS="-K enp0s25 tso off"' >> /etc/sysconfig/network-scripts/ifcfg-$INTERFACE
+
 echo "nmcli con down $INTERFACE" >> upbridge.sh
 echo "nmcli con up br0" >> upbridge.sh
 bash upbridge.sh ## Reconnect via ssh if your SSH connection times out
