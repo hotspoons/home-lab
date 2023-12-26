@@ -70,6 +70,7 @@ containerd config default > /etc/containerd/config.toml
 
 dnf install -y nvidia-container-toolkit
 nvidia-ctk runtime configure --runtime=containerd
+nvidia-ctk runtime configure --runtime=docker
 
 sed -i "s/SystemdCgroup = false/SystemdCgroup = true/g" /etc/containerd/config.toml
 
